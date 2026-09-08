@@ -82,24 +82,20 @@ cd ../server && npm install
 cd ..
 ```
 
-### 2. Environment Variables
-Create a `.env` file in the `server` directory (or configure in Vercel):
-```env
-PORT=5000
-MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/dr_smita_portfolio?retryWrites=true&w=majority
-JWT_SECRET=smita_kasar_academic_portfolio_jwt_secret_key_2026
-ADMIN_EMAIL=smitalkasar@gmail.com
-ADMIN_PASSWORD=your_secure_password
-NODE_ENV=development
-```
+### 2. Configuration
+Configure your local environment variables in `server/.env` or in your deployment platform (Vercel) dashboard:
+- `MONGODB_URI` - MongoDB Atlas connection string
+- `JWT_SECRET` - Secret key for authentication tokens
+- `ADMIN_EMAIL` - Faculty administrator email
+- `ADMIN_PASSWORD` - Administrator access password
 
 ### 3. Run Locally
 Run both client and server concurrently:
 ```bash
 npm run dev
 ```
-- Frontend runs at: `http://localhost:5173`
-- Backend runs at: `http://localhost:5000`
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:5000`
 
 ---
 
@@ -107,11 +103,7 @@ npm run dev
 
 1. Push this repository to GitHub.
 2. Import the project into [Vercel](https://vercel.com).
-3. Set the Environment Variables:
-   - `MONGODB_URI`
-   - `JWT_SECRET`
-   - `ADMIN_EMAIL`
-   - `ADMIN_PASSWORD`
+3. Add the required Environment Variables in the Vercel project settings.
 4. Click **Deploy**. Vercel will automatically build the client and deploy the serverless API routes according to [`vercel.json`](./vercel.json).
 
 ---
