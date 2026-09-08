@@ -21,10 +21,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20.x
+      - name: Setup Node.js 22.x
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install Dependencies
@@ -47,12 +47,15 @@ jobs:
     needs: build-and-verify
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    env:
+      HAS_TOKEN: ${{ secrets.VERCEL_TOKEN != '' }}
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Deploy to Vercel Action
+      - name: Deploy to Vercel Action (If Secret Configured)
+        if: env.HAS_TOKEN == 'true'
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
@@ -60,3 +63,9 @@ jobs:
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           vercel-args: '--prod'
           working-directory: ./
+
+      - name: Vercel Native Deployment Notification
+        if: env.HAS_TOKEN != 'true'
+        run: |
+          echo "ℹ️  VERCEL_TOKEN secret is not set in GitHub repository."
+          echo "✅ Vercel automatically deploys every commit pushed to main via native Git Integration."
