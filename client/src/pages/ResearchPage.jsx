@@ -48,7 +48,7 @@ const ResearchPage = () => {
               : prev.researchAreas
           }));
         }
-        if (projRes.status === 'fulfilled' && Array.isArray(projRes.value.data?.data) && projRes.value.data.data.length > 0) {
+        if (projRes.status === 'fulfilled' && Array.isArray(projRes.value.data?.data)) {
           setProjects(projRes.value.data.data);
         }
       })

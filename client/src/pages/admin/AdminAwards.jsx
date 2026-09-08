@@ -20,8 +20,8 @@ import { awardService, uploadService } from '../../services/api';
 import { initialAwards } from '../../data/fallbackData';
 
 const AdminAwards = () => {
-  const [awards, setAwards] = useState(initialAwards);
-  const [loading, setLoading] = useState(false);
+  const [awards, setAwards] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingAward, setEditingAward] = useState(null);
   const [statusMsg, setStatusMsg] = useState(null);

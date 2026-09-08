@@ -88,9 +88,9 @@ const HomePage = () => {
 
         setData(prev => ({
           profile: profData?.profile || prev.profile,
-          education: (profData?.education && profData.education.length > 0) ? profData.education : prev.education,
-          experience: (profData?.experience && profData.experience.length > 0) ? profData.experience : prev.experience,
-          researchAreas: (profData?.researchAreas && profData.researchAreas.length > 0) ? profData.researchAreas : prev.researchAreas,
+          education: Array.isArray(profData?.education) ? profData.education : prev.education,
+          experience: Array.isArray(profData?.experience) ? profData.experience : prev.experience,
+          researchAreas: Array.isArray(profData?.researchAreas) ? profData.researchAreas : prev.researchAreas,
           publications: (pubRes.status === 'fulfilled' && Array.isArray(pubRes.value.data?.data)) ? pubRes.value.data.data : prev.publications,
           awards: (awdRes.status === 'fulfilled' && Array.isArray(awdRes.value.data?.data)) ? awdRes.value.data.data : prev.awards,
           workshops: (wkpRes.status === 'fulfilled' && Array.isArray(wkpRes.value.data?.data)) ? wkpRes.value.data.data : prev.workshops,

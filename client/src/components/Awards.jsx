@@ -57,7 +57,7 @@ const Awards = ({ awards = [] }) => {
     }
   ];
 
-  const items = awards && awards.length > 0 ? awards : defaultAwards;
+  const items = Array.isArray(awards) ? awards : defaultAwards;
   const featuredAward = items.find(a => a.featured && a.title.includes('Visvesvaraya')) || items[0];
   const otherAwards = items.filter(a => a !== featuredAward);
 

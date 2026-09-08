@@ -41,8 +41,8 @@ const AboutPage = () => {
       .then(res => {
         if (res.data?.data) {
           if (res.data.data.profile) setProfile(res.data.data.profile);
-          if (res.data.data.education && res.data.data.education.length > 0) setEducation(res.data.data.education);
-          if (res.data.data.experience && res.data.data.experience.length > 0) setExperience(res.data.data.experience);
+          if (Array.isArray(res.data.data.education)) setEducation(res.data.data.education);
+          if (Array.isArray(res.data.data.experience)) setExperience(res.data.data.experience);
         }
       })
       .catch(err => console.error('Failed to load profile data:', err))

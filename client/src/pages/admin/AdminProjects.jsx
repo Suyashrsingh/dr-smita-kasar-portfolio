@@ -4,8 +4,8 @@ import { projectService } from '../../services/api';
 import { initialProjects } from '../../data/fallbackData';
 
 const AdminProjects = () => {
-  const [projects, setProjects] = useState(initialProjects);
-  const [loading, setLoading] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [statusMsg, setStatusMsg] = useState(null);
@@ -79,7 +79,10 @@ const AdminProjects = () => {
     try {
       await projectService.delete(id);
       setStatusMsg({ type: 'success', text: 'Project deleted successfully.' });
-      fetchProjects();
+      const res = await projectService.getAll();
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setProjects(res.data.data);
+      }
     } catch (err) {
       setStatusMsg({ type: 'error', text: 'Failed to delete project.' });
       fetchProjects();
@@ -109,17 +112,17 @@ const AdminProjects = () => {
       
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display font-extrabold text-2xl text-slate-900 dark:text-white">
-            Manage Funded Projects
+          <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-slate-900 dark:text-white">
+            Funded Projects & Grants
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Track AICTE, SPPU BCUD, and industrial sponsored research grants and publishing status.
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Manage research grants, industrial consultancy projects, and funding agency records.
           </p>
         </div>
 
         <button
           onClick={openCreateModal}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-academic-600 hover:bg-academic-700 text-white shadow-md shadow-academic-600/20 transition-all cursor-pointer"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-academic-600 hover:bg-academic-700 shadow-md shadow-academic-600/20 transition-all transform hover:-translate-y-0.5 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Add Project</span>
@@ -127,20 +130,36 @@ const AdminProjects = () => {
       </div>
 
       {statusMsg && (
-        <div className={`p-3.5 rounded-xl text-xs flex items-center justify-between ${
-          statusMsg.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
+        <div className={`p-3.5 rounded-xl text-xs flex items-center justify-between mac-card ${
+          statusMsg.type === 'success' ? 'border-emerald-500/50 text-emerald-700 dark:text-emerald-300' : 'border-rose-500/50 text-rose-700 dark:text-rose-300'
         }`}>
-          <span>{statusMsg.text}</span>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <span>{statusMsg.text}</span>
+          </div>
           <button onClick={() => setStatusMsg(null)}><X className="w-4 h-4" /></button>
         </div>
       )}
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {projects.map((prj) => {
-          const id = prj.id || prj._id;
-          return (
-            <div key={id} className="glass-card rounded-2xl p-6 border border-slate-200 dark:border-slate-800 space-y-3 flex flex-col justify-between shadow-sm">
+      {/* Grid or Empty/Loading State */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Clock className="w-8 h-8 text-academic-500 animate-spin" />
+        </div>
+      ) : projects.length === 0 ? (
+        <div className="mac-card rounded-2xl p-12 text-center space-y-3">
+          <Layers className="w-12 h-12 text-slate-400 mx-auto opacity-50" />
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">No Projects Found</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            All projects have been cleared or none have been added yet. Click "Add Project" above to create one.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {projects.map((prj) => {
+            const id = prj.id || prj._id;
+            return (
+              <div key={id} className="glass-card rounded-2xl p-6 border border-slate-200 dark:border-slate-800 space-y-3 flex flex-col justify-between shadow-sm">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -214,6 +233,7 @@ const AdminProjects = () => {
           );
         })}
       </div>
+      )}
 
       {/* Modal */}
       {modalOpen && (

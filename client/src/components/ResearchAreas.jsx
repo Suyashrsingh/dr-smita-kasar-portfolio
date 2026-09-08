@@ -65,7 +65,7 @@ const ResearchAreas = ({ researchAreas = [] }) => {
     }
   };
 
-  const areas = researchAreas && researchAreas.length > 0 ? researchAreas : defaultAreas;
+  const areas = Array.isArray(researchAreas) ? researchAreas : defaultAreas;
 
   return (
     <section id="research" className="py-24 relative">

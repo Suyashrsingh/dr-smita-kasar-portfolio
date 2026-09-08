@@ -52,7 +52,7 @@ const Workshops = ({ workshops = [] }) => {
     }
   ];
 
-  const items = workshops && workshops.length > 0 ? workshops : defaultWorkshops;
+  const items = Array.isArray(workshops) ? workshops : defaultWorkshops;
   const tabs = ['All', 'Organized', 'Keynote / Resource', 'Attended'];
 
   const filteredItems = items.filter(w => {

@@ -27,51 +27,57 @@ const TestModel = require('../models/Test');
 const TestSubmissionModel = require('../models/TestSubmission');
 const ArticleModel = require('../models/Article');
 
+const MetaModel = mongoose.models.SystemMeta || mongoose.model('SystemMeta', new mongoose.Schema({
+  key: { type: String, required: true, unique: true },
+  value: mongoose.Schema.Types.Mixed
+}, { timestamps: true }));
+
 let isSeeding = false;
 const autoSeedIfEmpty = async () => {
   if (mongoose.connection.readyState !== 1 || isSeeding) return;
   isSeeding = true;
   try {
+    const initialized = await MetaModel.findOne({ key: 'database_initialized' }).lean();
+    if (initialized) {
+      // Database has already been initialized. NEVER re-insert deleted records!
+      return;
+    }
+
+    // Check if database already has data
     const pubCount = await PublicationModel.countDocuments();
-    if (pubCount === 0 && initialPublications && initialPublications.length > 0) {
-      console.log('🌱 [MongoDB Atlas] Auto-seeding publications...');
+    if (pubCount > 0) {
+      await MetaModel.create({ key: 'database_initialized', value: true });
+      return;
+    }
+
+    console.log('🌱 [MongoDB Atlas] Initializing one-time default dataset...');
+    if (initialPublications && initialPublications.length > 0) {
       await PublicationModel.insertMany(initialPublications.map(({ id, _id, ...rest }) => rest));
     }
-    const awdCount = await AwardModel.countDocuments();
-    if (awdCount === 0 && initialAwards && initialAwards.length > 0) {
-      console.log('🌱 [MongoDB Atlas] Auto-seeding awards...');
+    if (initialAwards && initialAwards.length > 0) {
       await AwardModel.insertMany(initialAwards.map(({ id, _id, ...rest }) => rest));
     }
-    const wkpCount = await WorkshopModel.countDocuments();
-    if (wkpCount === 0 && initialWorkshops && initialWorkshops.length > 0) {
-      console.log('🌱 [MongoDB Atlas] Auto-seeding workshops...');
+    if (initialWorkshops && initialWorkshops.length > 0) {
       await WorkshopModel.insertMany(initialWorkshops.map(({ id, _id, ...rest }) => rest));
     }
-    const prjCount = await ProjectModel.countDocuments();
-    if (prjCount === 0 && initialProjects && initialProjects.length > 0) {
-      console.log('🌱 [MongoDB Atlas] Auto-seeding projects...');
+    if (initialProjects && initialProjects.length > 0) {
       await ProjectModel.insertMany(initialProjects.map(({ id, _id, ...rest }) => rest));
     }
-    const galCount = await GalleryModel.countDocuments();
-    if (galCount === 0 && initialGallery && initialGallery.length > 0) {
-      console.log('🌱 [MongoDB Atlas] Auto-seeding gallery...');
+    if (initialGallery && initialGallery.length > 0) {
       await GalleryModel.insertMany(initialGallery.map(({ id, _id, ...rest }) => rest));
     }
-    const artCount = await ArticleModel.countDocuments();
-    if (artCount === 0 && initialArticles && initialArticles.length > 0) {
-      console.log('🌱 [MongoDB Atlas] Auto-seeding articles...');
+    if (initialArticles && initialArticles.length > 0) {
       await ArticleModel.insertMany(initialArticles.map(({ id, _id, ...rest }) => rest));
     }
-    const tstCount = await TestModel.countDocuments();
-    if (tstCount === 0 && initialTests && initialTests.length > 0) {
-      console.log('🌱 [MongoDB Atlas] Auto-seeding tests...');
+    if (initialTests && initialTests.length > 0) {
       await TestModel.insertMany(initialTests.map(({ id, _id, ...rest }) => rest));
     }
-    const profCount = await ProfileModel.countDocuments();
-    if (profCount === 0 && initialProfile) {
-      console.log('🌱 [MongoDB Atlas] Auto-seeding profile...');
+    if (initialProfile) {
       await ProfileModel.create(initialProfile);
     }
+
+    await MetaModel.create({ key: 'database_initialized', value: true });
+    console.log('✅ [MongoDB Atlas] Database one-time initialization complete.');
   } catch (err) {
     console.warn('⚠️ [MongoDB Atlas] Auto-seed notice:', err.message);
   } finally {
@@ -771,7 +777,7 @@ const store = {
       queryCache.set(cacheKey, res);
       return res;
     } catch (e) {
-      return initialArticles;
+      return [];
     }
   },
 

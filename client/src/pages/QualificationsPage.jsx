@@ -25,8 +25,8 @@ const QualificationsPage = () => {
         if (res.data?.data) {
           setData(prev => ({
             profile: res.data.data.profile || prev.profile,
-            education: (res.data.data.education && res.data.data.education.length > 0) ? res.data.data.education : prev.education,
-            experience: (res.data.data.experience && res.data.data.experience.length > 0) ? res.data.data.experience : prev.experience
+            education: Array.isArray(res.data.data.education) ? res.data.data.education : prev.education,
+            experience: Array.isArray(res.data.data.experience) ? res.data.data.experience : prev.experience
           }));
         }
       })

@@ -21,8 +21,8 @@ import { galleryService, uploadService } from '../../services/api';
 import { initialGallery } from '../../data/fallbackData';
 
 const AdminGallery = () => {
-  const [gallery, setGallery] = useState(initialGallery);
-  const [loading, setLoading] = useState(false);
+  const [gallery, setGallery] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [statusMsg, setStatusMsg] = useState(null);

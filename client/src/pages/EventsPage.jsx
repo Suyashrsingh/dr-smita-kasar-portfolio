@@ -38,10 +38,10 @@ const EventsPage = () => {
       galleryService.getAll(),
       profileService.getProfile()
     ]).then(([wkpRes, galRes, profRes]) => {
-      if (wkpRes.status === 'fulfilled' && Array.isArray(wkpRes.value.data?.data) && wkpRes.value.data.data.length > 0) {
+      if (wkpRes.status === 'fulfilled' && Array.isArray(wkpRes.value.data?.data)) {
         setWorkshops(wkpRes.value.data.data);
       }
-      if (galRes.status === 'fulfilled' && Array.isArray(galRes.value.data?.data) && galRes.value.data.data.length > 0) {
+      if (galRes.status === 'fulfilled' && Array.isArray(galRes.value.data?.data)) {
         setGallery(galRes.value.data.data);
       }
       if (profRes.status === 'fulfilled' && profRes.value.data?.data?.profile) {

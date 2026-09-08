@@ -17,8 +17,8 @@ import { workshopService, uploadService } from '../../services/api';
 import { initialWorkshops } from '../../data/fallbackData';
 
 const AdminWorkshops = () => {
-  const [workshops, setWorkshops] = useState(initialWorkshops);
-  const [loading, setLoading] = useState(false);
+  const [workshops, setWorkshops] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [statusMsg, setStatusMsg] = useState(null);

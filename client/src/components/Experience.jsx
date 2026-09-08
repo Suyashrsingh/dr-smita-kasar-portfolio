@@ -48,7 +48,7 @@ const Experience = ({ experience = [] }) => {
     }
   ];
 
-  const items = experience && experience.length > 0 ? experience : defaultExp;
+  const items = Array.isArray(experience) ? experience : defaultExp;
 
   return (
     <section id="experience" className="py-24 relative bg-slate-50/60 dark:bg-navy-950/60 border-t border-slate-200/80 dark:border-slate-800/80">

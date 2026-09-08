@@ -18,11 +18,10 @@ import {
   FileCheck
 } from 'lucide-react';
 import { articleService, uploadService } from '../../services/api';
-import { initialArticles } from '../../data/fallbackData';
 
 const AdminArticles = () => {
-  const [articles, setArticles] = useState(initialArticles);
-  const [loading, setLoading] = useState(false);
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [statusMsg, setStatusMsg] = useState(null);
@@ -114,7 +113,10 @@ const AdminArticles = () => {
     try {
       await articleService.delete(id);
       setStatusMsg({ type: 'success', text: 'Item deleted successfully.' });
-      fetchArticles();
+      const res = await articleService.getAll();
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setArticles(res.data.data);
+      }
     } catch (err) {
       setStatusMsg({ type: 'error', text: 'Failed to delete.' });
       fetchArticles();
@@ -158,14 +160,14 @@ const AdminArticles = () => {
           <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-slate-900 dark:text-white">
             E-Content, Notes & Circulars
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Publish academic circulars, course notes, lecture PDFs, and departmental study materials with direct upload or links.
           </p>
         </div>
 
         <button
           onClick={openCreateModal}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold mac-btn-primary text-white shadow-md transition-all cursor-pointer"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-academic-600 hover:bg-academic-700 shadow-md shadow-academic-600/20 transition-all transform hover:-translate-y-0.5 cursor-pointer self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>Publish Note / Material</span>
@@ -184,100 +186,116 @@ const AdminArticles = () => {
         </div>
       )}
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {articles.map((art) => {
-          const id = art.id || art._id;
-          return (
-            <div
-              key={id}
-              className="mac-card rounded-2xl p-6 space-y-3 flex flex-col justify-between"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-academic-500/10 text-academic-700 dark:text-academic-300 border border-academic-500/20">
-                    {art.category}
-                  </span>
+      {/* Grid or Empty/Loading State */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-academic-500 animate-spin" />
+        </div>
+      ) : articles.length === 0 ? (
+        <div className="mac-card rounded-2xl p-12 text-center space-y-3">
+          <FileText className="w-12 h-12 text-slate-400 mx-auto opacity-50" />
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">No Content Found</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            All notes and circulars have been cleared, or none have been published yet. Click "Publish Note / Material" above to add new material.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {articles.map((art) => {
+            const id = art.id || art._id;
+            return (
+              <div
+                key={id}
+                className="mac-card rounded-2xl p-6 space-y-3 flex flex-col justify-between"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-academic-500/10 text-academic-700 dark:text-academic-300 border border-academic-500/20">
+                      {art.category}
+                    </span>
 
-                  <button
-                    onClick={() => handleTogglePublish(id)}
-                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold cursor-pointer transition-colors ${
-                      art.isPublished !== false
-                        ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
-                        : 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
-                    }`}
-                  >
-                    {art.isPublished !== false ? (
-                      <>
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Published</span>
-                      </>
-                    ) : (
-                      <>
-                        <EyeOff className="w-3.5 h-3.5" />
-                        <span>Draft</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                  {art.title}
-                </h3>
-
-                <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-3">
-                  {art.content}
-                </p>
-
-                {art.attachmentUrl && (
-                  <div className="pt-1">
-                    <a
-                      href={art.attachmentUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-semibold bg-white/60 dark:bg-white/10 text-academic-600 dark:text-academic-300 border border-academic-500/20 hover:border-academic-500"
+                    <button
+                      onClick={() => handleTogglePublish(id)}
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold cursor-pointer transition-colors ${
+                        art.isPublished !== false
+                          ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                          : 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                      }`}
                     >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Attached Material: {art.attachmentUrl.split('/').pop()}</span>
-                    </a>
+                      {art.isPublished !== false ? (
+                        <>
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Published</span>
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="w-3.5 h-3.5" />
+                          <span>Draft</span>
+                        </>
+                      )}
+                    </button>
                   </div>
-                )}
 
-                <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono pt-1">
-                  <span>{art.date}</span>
-                  <span>By {art.author || 'Dr. Smita Kasar'}</span>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                    {art.title}
+                  </h3>
+
+                  <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-3">
+                    {art.content}
+                  </p>
+
+                  {art.attachmentUrl && (
+                    <div className="pt-1">
+                      <a
+                        href={art.attachmentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-semibold bg-white/60 dark:bg-white/10 text-academic-600 dark:text-academic-300 border border-academic-500/20 hover:border-academic-500"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Attached Material: {art.attachmentUrl.split('/').pop()}</span>
+                      </a>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono pt-1">
+                    <span>{art.date}</span>
+                    <span>By {art.author || 'Dr. Smita Kasar'}</span>
+                  </div>
+                </div>
+
+                {/* Footer Controls */}
+                <div className="flex items-center justify-between pt-3 border-t border-slate-200/80 dark:border-white/10">
+                  <div className="flex flex-wrap gap-1">
+                    {(art.tags || []).slice(0, 3).map((t, idx) => (
+                      <span key={idx} className="px-2 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-navy-900 text-slate-500 font-mono">
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openEditModal(art)}
+                      className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-white/10 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(id)}
+                      className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              <div className="pt-3 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between">
-                <button
-                  onClick={() => handleTogglePublish(id)}
-                  className="text-xs font-semibold text-academic-600 dark:text-academic-400 hover:underline cursor-pointer"
-                >
-                  {art.isPublished !== false ? 'Set to Draft' : 'Publish to Live'}
-                </button>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => openEditModal(art)}
-                    className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-white/10 text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    <span>Edit</span>
-                  </button>
-                  <button
-                    onClick={() => handleDelete(id)}
-                    className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Modal */}
       {modalOpen && (

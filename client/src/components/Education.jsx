@@ -40,7 +40,7 @@ const Education = ({ education = [] }) => {
     }
   ];
 
-  const items = education && education.length > 0 ? education : defaultEdu;
+  const items = Array.isArray(education) ? education : defaultEdu;
 
   return (
     <section id="education" className="py-20 relative">

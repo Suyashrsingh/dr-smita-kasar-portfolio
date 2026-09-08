@@ -64,7 +64,7 @@ const Gallery = ({ gallery = [] }) => {
     }
   ];
 
-  const items = gallery && gallery.length > 0 ? gallery : defaultGallery;
+  const items = Array.isArray(gallery) ? gallery : defaultGallery;
 
   const filteredItems = items.filter(item => {
     if (selectedCategory === 'All') return true;

@@ -45,7 +45,7 @@ const Projects = ({ projects = [] }) => {
     }
   ];
 
-  const items = projects && projects.length > 0 ? projects : defaultProjects;
+  const items = Array.isArray(projects) ? projects : defaultProjects;
 
   return (
     <section id="projects" className="py-24 relative">

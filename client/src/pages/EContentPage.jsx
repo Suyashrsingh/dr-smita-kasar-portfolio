@@ -36,10 +36,10 @@ const EContentPage = () => {
       testService.getAll(),
       profileService.getProfile()
     ]).then(([artRes, tstRes, profRes]) => {
-      if (artRes.status === 'fulfilled' && Array.isArray(artRes.value.data?.data) && artRes.value.data.data.length > 0) {
+      if (artRes.status === 'fulfilled' && Array.isArray(artRes.value.data?.data)) {
         setArticles(artRes.value.data.data);
       }
-      if (tstRes.status === 'fulfilled' && Array.isArray(tstRes.value.data?.data) && tstRes.value.data.data.length > 0) {
+      if (tstRes.status === 'fulfilled' && Array.isArray(tstRes.value.data?.data)) {
         setTests(tstRes.value.data.data);
       }
       if (profRes.status === 'fulfilled' && profRes.value.data?.data?.profile) {

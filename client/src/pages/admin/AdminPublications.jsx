@@ -21,8 +21,8 @@ import { publicationService, uploadService } from '../../services/api';
 import { initialPublications } from '../../data/fallbackData';
 
 const AdminPublications = () => {
-  const [publications, setPublications] = useState(initialPublications);
-  const [loading, setLoading] = useState(false);
+  const [publications, setPublications] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPub, setEditingPub] = useState(null);
