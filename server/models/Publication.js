@@ -48,6 +48,10 @@ const PublicationSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  isPublished: {
+    type: Boolean,
+    default: true,
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.models.Publication || mongoose.model('Publication', PublicationSchema);

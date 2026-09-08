@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
+const mongoose = require('mongoose');
 const { connectDB, getStatus } = require('./config/db');
 
 const app = express();
@@ -19,6 +20,14 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('dev'));
+
+// Ensure MongoDB is connected before handling any API requests
+app.use(async (req, res, next) => {
+  if (process.env.MONGODB_URI && mongoose.connection.readyState !== 1) {
+    await connectDB();
+  }
+  next();
+});
 
 // Static uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

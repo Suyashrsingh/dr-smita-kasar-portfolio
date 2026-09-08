@@ -36,6 +36,10 @@ const ProjectSchema = new mongoose.Schema({
     type: String,
     default: 'Artificial Intelligence & Healthcare',
   },
+  isPublished: {
+    type: Boolean,
+    default: true,
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.models.Project || mongoose.model('Project', ProjectSchema);

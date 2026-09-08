@@ -1,35 +1,11 @@
-const { getStatus } = require('../config/db');
+const mongoose = require('mongoose');
+const { getStatus, connectDB } = require('../config/db');
 const {
   initialProfile,
   initialEducation,
   initialExperience,
   initialResearchAreas,
-  initialPublications,
-  initialAwards,
-  initialProjects,
-  initialWorkshops,
-  initialGallery,
-  initialMessages,
-  initialTests,
-  initialArticles
 } = require('./initialData');
-
-// In-Memory dynamic cache initialized with initial rich data
-let profile = { ...initialProfile };
-let education = [...initialEducation];
-let experience = [...initialExperience];
-let researchAreas = [...initialResearchAreas];
-let publications = [...initialPublications];
-let awards = [...initialAwards];
-let projects = [...initialProjects];
-let workshops = [...initialWorkshops];
-let gallery = [...initialGallery];
-let messages = [...initialMessages];
-let tests = [...initialTests];
-let articles = [...initialArticles];
-let testSubmissions = [];
-
-const genId = (prefix) => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
 // Mongoose Model imports
 const ProfileModel = require('../models/Profile');
@@ -43,861 +19,462 @@ const TestModel = require('../models/Test');
 const TestSubmissionModel = require('../models/TestSubmission');
 const ArticleModel = require('../models/Article');
 
+const ensureDb = async () => {
+  if (mongoose.connection.readyState !== 1) {
+    await connectDB();
+  }
+};
+
+const buildQuery = (id) => {
+  if (!id) return { _id: null };
+  const clauses = [];
+  if (mongoose.Types.ObjectId.isValid(id)) {
+    clauses.push({ _id: new mongoose.Types.ObjectId(id) });
+  }
+  clauses.push({ id: id });
+  return clauses.length === 1 ? clauses[0] : { $or: clauses };
+};
+
+const formatDoc = (doc) => {
+  if (!doc) return null;
+  const obj = doc.toObject ? doc.toObject() : { ...doc };
+  if (obj._id) {
+    obj.id = obj._id.toString();
+    obj._id = obj._id.toString();
+  }
+  return obj;
+};
+
+const formatDocs = (docs) => {
+  if (!docs || !Array.isArray(docs)) return [];
+  return docs.map(formatDoc);
+};
+
+const isDbConnected = () => mongoose.connection.readyState === 1 || getStatus();
+
 const store = {
-  // Profile
+  // ==================== Profile ====================
   async getProfile() {
-    if (getStatus()) {
-      try {
-        let p = await ProfileModel.findOne();
-        if (!p) {
-          p = await ProfileModel.create(profile);
-        }
-        return p;
-      } catch (err) {
-        console.warn('Fallback to local store for profile:', err.message);
-      }
+    await ensureDb();
+    let p = await ProfileModel.findOne();
+    if (!p) {
+      p = await ProfileModel.create(initialProfile);
     }
-    return profile;
+    return formatDoc(p) || initialProfile;
   },
 
   async updateProfile(updates) {
-    if (getStatus()) {
-      try {
-        let p = await ProfileModel.findOneAndUpdate({}, { $set: updates }, { new: true, upsert: true });
-        profile = { ...profile, ...updates };
-        return p;
-      } catch (err) {
-        console.warn('Fallback update for profile:', err.message);
-      }
-    }
-    profile = { ...profile, ...updates };
-    return profile;
+    await ensureDb();
+    let p = await ProfileModel.findOneAndUpdate({}, { $set: updates }, { new: true, upsert: true });
+    return formatDoc(p);
   },
 
-  getEducation: (p) => (p?.education && p.education.length > 0 ? p.education : education),
-  getExperience: (p) => (p?.experience && p.experience.length > 0 ? p.experience : experience),
-  getResearchAreas: (p) => (p?.researchAreas && p.researchAreas.length > 0 ? p.researchAreas : researchAreas),
+  getEducation: (p) => (p?.education && p.education.length > 0 ? p.education : initialEducation),
+  getExperience: (p) => (p?.experience && p.experience.length > 0 ? p.experience : initialExperience),
+  getResearchAreas: (p) => (p?.researchAreas && p.researchAreas.length > 0 ? p.researchAreas : initialResearchAreas),
 
-  // Publications
+  // ==================== Publications ====================
   async getPublications(query = {}, isAdmin = false) {
-    if (getStatus()) {
-      try {
-        const filter = {};
-        if (!isAdmin) filter.isPublished = { $ne: false };
-        if (query.type && query.type !== 'All') filter.type = query.type;
-        if (query.year) filter.year = Number(query.year);
-        if (query.search) {
-          filter.$or = [
-            { title: { $regex: query.search, $options: 'i' } },
-            { authors: { $regex: query.search, $options: 'i' } },
-            { journal: { $regex: query.search, $options: 'i' } }
-          ];
-        }
-        const pubs = await PublicationModel.find(filter).sort({ year: -1, createdAt: -1 });
-        return pubs || [];
-      } catch (err) {
-        console.warn('Fallback for publications:', err.message);
-      }
-    }
-    let res = [...publications];
-    if (!isAdmin) {
-      res = res.filter(p => p.isPublished !== false);
-    }
-    if (query.type && query.type !== 'All') {
-      res = res.filter(p => p.type?.toLowerCase() === query.type.toLowerCase());
-    }
-    if (query.year) {
-      res = res.filter(p => p.year === Number(query.year));
-    }
+    await ensureDb();
+    const filter = {};
+    if (!isAdmin) filter.isPublished = { $ne: false };
+    if (query.type && query.type !== 'All') filter.type = query.type;
+    if (query.year) filter.year = Number(query.year);
     if (query.search) {
-      const q = query.search.toLowerCase();
-      res = res.filter(p =>
-        (p.title && p.title.toLowerCase().includes(q)) ||
-        (p.authors && p.authors.toLowerCase().includes(q)) ||
-        (p.journal && p.journal.toLowerCase().includes(q))
-      );
+      filter.$or = [
+        { title: { $regex: query.search, $options: 'i' } },
+        { authors: { $regex: query.search, $options: 'i' } },
+        { journal: { $regex: query.search, $options: 'i' } }
+      ];
     }
-    return res.sort((a, b) => b.year - a.year);
+    const docs = await PublicationModel.find(filter).sort({ year: -1, createdAt: -1 });
+    return formatDocs(docs);
   },
 
   async createPublication(data) {
+    await ensureDb();
     const pubData = { isPublished: true, ...data };
-    if (getStatus()) {
-      try {
-        const created = await PublicationModel.create(pubData);
-        publications.unshift(created.toObject ? created.toObject() : created);
-        return created;
-      } catch (err) {
-        console.warn('Fallback create publication:', err.message);
-      }
-    }
-    const item = { id: genId('pub'), ...pubData, createdAt: new Date().toISOString() };
-    publications.unshift(item);
-    return item;
+    const created = await PublicationModel.create(pubData);
+    return formatDoc(created);
   },
 
   async updatePublication(id, updates) {
-    if (getStatus()) {
-      try {
-        const updated = await PublicationModel.findByIdAndUpdate(id, { $set: updates }, { new: true });
-        if (updated) {
-          const idx = publications.findIndex(p => p._id?.toString() === id || p.id === id);
-          if (idx !== -1) publications[idx] = updated.toObject ? updated.toObject() : updated;
-          return updated;
-        }
-      } catch (err) {
-        console.warn('Fallback update publication:', err.message);
-      }
-    }
-    const idx = publications.findIndex(p => p.id === id || p._id?.toString() === id);
-    if (idx !== -1) {
-      publications[idx] = { ...publications[idx], ...updates };
-      return publications[idx];
-    }
-    return null;
+    await ensureDb();
+    const updated = await PublicationModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true });
+    return formatDoc(updated);
   },
 
   async togglePublishPublication(id) {
-    if (getStatus()) {
-      try {
-        const doc = await PublicationModel.findById(id);
-        if (doc) {
-          doc.isPublished = !doc.isPublished;
-          await doc.save();
-          const idx = publications.findIndex(p => p._id?.toString() === id || p.id === id);
-          if (idx !== -1) publications[idx] = doc.toObject();
-          return doc;
-        }
-      } catch (err) {
-        console.warn('Fallback toggle publication:', err.message);
-      }
-    }
-    const idx = publications.findIndex(p => p.id === id || p._id?.toString() === id);
-    const newStatus = idx !== -1 ? !publications[idx].isPublished : false;
-    return this.updatePublication(id, { isPublished: newStatus });
+    await ensureDb();
+    const doc = await PublicationModel.findOne(buildQuery(id));
+    if (!doc) return null;
+    doc.isPublished = doc.isPublished === false ? true : false;
+    await doc.save();
+    return formatDoc(doc);
   },
 
   async deletePublication(id) {
-    if (getStatus()) {
-      try {
-        await PublicationModel.findByIdAndDelete(id);
-      } catch (err) {
-        console.warn('Fallback delete publication:', err.message);
-      }
-    }
-    publications = publications.filter(p => p.id !== id && p._id?.toString() !== id);
-    return true;
+    await ensureDb();
+    const res = await PublicationModel.deleteOne(buildQuery(id));
+    return res.deletedCount > 0;
   },
 
-  // Awards
+  // ==================== Awards ====================
   async getAwards(isAdmin = false) {
-    if (getStatus()) {
-      try {
-        const filter = isAdmin ? {} : { isPublished: { $ne: false } };
-        const docs = await AwardModel.find(filter).sort({ year: -1, createdAt: -1 });
-        return docs || [];
-      } catch (err) {
-        console.warn('Fallback for awards:', err.message);
-      }
-    }
-    let res = [...awards];
-    if (!isAdmin) res = res.filter(a => a.isPublished !== false);
-    return res.sort((a, b) => (parseInt(b.year) || 0) - (parseInt(a.year) || 0));
+    await ensureDb();
+    const filter = isAdmin ? {} : { isPublished: { $ne: false } };
+    const docs = await AwardModel.find(filter).sort({ year: -1, createdAt: -1 });
+    return formatDocs(docs);
   },
 
   async createAward(data) {
+    await ensureDb();
     const itemData = { isPublished: true, ...data };
-    if (getStatus()) {
-      try {
-        const created = await AwardModel.create(itemData);
-        awards.unshift(created.toObject ? created.toObject() : created);
-        return created;
-      } catch (err) {
-        console.warn('Fallback create award:', err.message);
-      }
-    }
-    const item = { id: genId('awd'), ...itemData, createdAt: new Date().toISOString() };
-    awards.unshift(item);
-    return item;
+    const created = await AwardModel.create(itemData);
+    return formatDoc(created);
   },
 
   async updateAward(id, updates) {
-    if (getStatus()) {
-      try {
-        const updated = await AwardModel.findByIdAndUpdate(id, { $set: updates }, { new: true });
-        if (updated) {
-          const idx = awards.findIndex(a => a._id?.toString() === id || a.id === id);
-          if (idx !== -1) awards[idx] = updated.toObject ? updated.toObject() : updated;
-          return updated;
-        }
-      } catch (err) {
-        console.warn('Fallback update award:', err.message);
-      }
-    }
-    const idx = awards.findIndex(a => a.id === id || a._id?.toString() === id);
-    if (idx !== -1) {
-      awards[idx] = { ...awards[idx], ...updates };
-      return awards[idx];
-    }
-    return null;
+    await ensureDb();
+    const updated = await AwardModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true });
+    return formatDoc(updated);
   },
 
   async togglePublishAward(id) {
-    if (getStatus()) {
-      try {
-        const doc = await AwardModel.findById(id);
-        if (doc) {
-          doc.isPublished = !doc.isPublished;
-          await doc.save();
-          const idx = awards.findIndex(a => a._id?.toString() === id || a.id === id);
-          if (idx !== -1) awards[idx] = doc.toObject();
-          return doc;
-        }
-      } catch (err) {
-        console.warn('Fallback toggle award:', err.message);
-      }
-    }
-    const idx = awards.findIndex(a => a.id === id || a._id?.toString() === id);
-    const newStatus = idx !== -1 ? !awards[idx].isPublished : false;
-    return this.updateAward(id, { isPublished: newStatus });
+    await ensureDb();
+    const doc = await AwardModel.findOne(buildQuery(id));
+    if (!doc) return null;
+    doc.isPublished = doc.isPublished === false ? true : false;
+    await doc.save();
+    return formatDoc(doc);
   },
 
   async deleteAward(id) {
-    if (getStatus()) {
-      try {
-        await AwardModel.findByIdAndDelete(id);
-      } catch (err) {
-        console.warn('Fallback delete award:', err.message);
-      }
-    }
-    awards = awards.filter(a => a.id !== id && a._id?.toString() !== id);
-    return true;
+    await ensureDb();
+    const res = await AwardModel.deleteOne(buildQuery(id));
+    return res.deletedCount > 0;
   },
 
-  // Workshops
+  // ==================== Workshops & FDPs ====================
   async getWorkshops(isAdmin = false) {
-    if (getStatus()) {
-      try {
-        const filter = isAdmin ? {} : { isPublished: { $ne: false } };
-        const docs = await WorkshopModel.find(filter).sort({ createdAt: -1 });
-        return docs || [];
-      } catch (err) {
-        console.warn('Fallback for workshops:', err.message);
-      }
-    }
-    let res = [...workshops];
-    if (!isAdmin) res = res.filter(w => w.isPublished !== false);
-    return res;
+    await ensureDb();
+    const filter = isAdmin ? {} : { isPublished: { $ne: false } };
+    const docs = await WorkshopModel.find(filter).sort({ createdAt: -1 });
+    return formatDocs(docs);
   },
 
   async createWorkshop(data) {
+    await ensureDb();
     const itemData = { isPublished: true, ...data };
-    if (getStatus()) {
-      try {
-        const created = await WorkshopModel.create(itemData);
-        workshops.unshift(created.toObject ? created.toObject() : created);
-        return created;
-      } catch (err) {
-        console.warn('Fallback create workshop:', err.message);
-      }
-    }
-    const item = { id: genId('wkp'), ...itemData, createdAt: new Date().toISOString() };
-    workshops.unshift(item);
-    return item;
+    const created = await WorkshopModel.create(itemData);
+    return formatDoc(created);
   },
 
   async updateWorkshop(id, updates) {
-    if (getStatus()) {
-      try {
-        const updated = await WorkshopModel.findByIdAndUpdate(id, { $set: updates }, { new: true });
-        if (updated) {
-          const idx = workshops.findIndex(w => w._id?.toString() === id || w.id === id);
-          if (idx !== -1) workshops[idx] = updated.toObject ? updated.toObject() : updated;
-          return updated;
-        }
-      } catch (err) {
-        console.warn('Fallback update workshop:', err.message);
-      }
-    }
-    const idx = workshops.findIndex(w => w.id === id || w._id?.toString() === id);
-    if (idx !== -1) {
-      workshops[idx] = { ...workshops[idx], ...updates };
-      return workshops[idx];
-    }
-    return null;
+    await ensureDb();
+    const updated = await WorkshopModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true });
+    return formatDoc(updated);
   },
 
   async togglePublishWorkshop(id) {
-    if (getStatus()) {
-      try {
-        const doc = await WorkshopModel.findById(id);
-        if (doc) {
-          doc.isPublished = !doc.isPublished;
-          await doc.save();
-          const idx = workshops.findIndex(w => w._id?.toString() === id || w.id === id);
-          if (idx !== -1) workshops[idx] = doc.toObject();
-          return doc;
-        }
-      } catch (err) {
-        console.warn('Fallback toggle workshop:', err.message);
-      }
-    }
-    const idx = workshops.findIndex(w => w.id === id || w._id?.toString() === id);
-    const newStatus = idx !== -1 ? !workshops[idx].isPublished : false;
-    return this.updateWorkshop(id, { isPublished: newStatus });
+    await ensureDb();
+    const doc = await WorkshopModel.findOne(buildQuery(id));
+    if (!doc) return null;
+    doc.isPublished = doc.isPublished === false ? true : false;
+    await doc.save();
+    return formatDoc(doc);
   },
 
   async deleteWorkshop(id) {
-    if (getStatus()) {
-      try {
-        await WorkshopModel.findByIdAndDelete(id);
-      } catch (err) {
-        console.warn('Fallback delete workshop:', err.message);
-      }
-    }
-    workshops = workshops.filter(w => w.id !== id && w._id?.toString() !== id);
-    return true;
+    await ensureDb();
+    const res = await WorkshopModel.deleteOne(buildQuery(id));
+    return res.deletedCount > 0;
   },
 
-  // Projects
+  // ==================== Funded Projects ====================
   async getProjects(isAdmin = false) {
-    if (getStatus()) {
-      try {
-        const filter = isAdmin ? {} : { isPublished: { $ne: false } };
-        const docs = await ProjectModel.find(filter).sort({ createdAt: -1 });
-        return docs || [];
-      } catch (err) {
-        console.warn('Fallback for projects:', err.message);
-      }
-    }
-    let res = [...projects];
-    if (!isAdmin) res = res.filter(p => p.isPublished !== false);
-    return res;
+    await ensureDb();
+    const filter = isAdmin ? {} : { isPublished: { $ne: false } };
+    const docs = await ProjectModel.find(filter).sort({ createdAt: -1 });
+    return formatDocs(docs);
   },
 
   async createProject(data) {
+    await ensureDb();
     const itemData = { isPublished: true, ...data };
-    if (getStatus()) {
-      try {
-        const created = await ProjectModel.create(itemData);
-        projects.unshift(created.toObject ? created.toObject() : created);
-        return created;
-      } catch (err) {
-        console.warn('Fallback create project:', err.message);
-      }
-    }
-    const item = { id: genId('prj'), ...itemData, createdAt: new Date().toISOString() };
-    projects.unshift(item);
-    return item;
+    const created = await ProjectModel.create(itemData);
+    return formatDoc(created);
   },
 
   async updateProject(id, updates) {
-    if (getStatus()) {
-      try {
-        const updated = await ProjectModel.findByIdAndUpdate(id, { $set: updates }, { new: true });
-        if (updated) {
-          const idx = projects.findIndex(p => p._id?.toString() === id || p.id === id);
-          if (idx !== -1) projects[idx] = updated.toObject ? updated.toObject() : updated;
-          return updated;
-        }
-      } catch (err) {
-        console.warn('Fallback update project:', err.message);
-      }
-    }
-    const idx = projects.findIndex(p => p.id === id || p._id?.toString() === id);
-    if (idx !== -1) {
-      projects[idx] = { ...projects[idx], ...updates };
-      return projects[idx];
-    }
-    return null;
+    await ensureDb();
+    const updated = await ProjectModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true });
+    return formatDoc(updated);
   },
 
   async togglePublishProject(id) {
-    if (getStatus()) {
-      try {
-        const doc = await ProjectModel.findById(id);
-        if (doc) {
-          doc.isPublished = !doc.isPublished;
-          await doc.save();
-          const idx = projects.findIndex(p => p._id?.toString() === id || p.id === id);
-          if (idx !== -1) projects[idx] = doc.toObject();
-          return doc;
-        }
-      } catch (err) {
-        console.warn('Fallback toggle project:', err.message);
-      }
-    }
-    const idx = projects.findIndex(p => p.id === id || p._id?.toString() === id);
-    const newStatus = idx !== -1 ? !projects[idx].isPublished : false;
-    return this.updateProject(id, { isPublished: newStatus });
+    await ensureDb();
+    const doc = await ProjectModel.findOne(buildQuery(id));
+    if (!doc) return null;
+    doc.isPublished = doc.isPublished === false ? true : false;
+    await doc.save();
+    return formatDoc(doc);
   },
 
   async deleteProject(id) {
-    if (getStatus()) {
-      try {
-        await ProjectModel.findByIdAndDelete(id);
-      } catch (err) {
-        console.warn('Fallback delete project:', err.message);
-      }
-    }
-    projects = projects.filter(p => p.id !== id && p._id?.toString() !== id);
-    return true;
+    await ensureDb();
+    const res = await ProjectModel.deleteOne(buildQuery(id));
+    return res.deletedCount > 0;
   },
 
-  // Gallery
+  // ==================== Photo Gallery ====================
   async getGallery(category, isAdmin = false) {
-    if (getStatus()) {
-      try {
-        const filter = {};
-        if (!isAdmin) filter.isPublished = { $ne: false };
-        if (category && category !== 'All') filter.category = category;
-        const docs = await GalleryModel.find(filter).sort({ createdAt: -1 });
-        return docs || [];
-      } catch (err) {
-        console.warn('Fallback for gallery:', err.message);
-      }
-    }
-    let res = [...gallery];
-    if (!isAdmin) res = res.filter(g => g.isPublished !== false);
-    if (category && category !== 'All') {
-      res = res.filter(g => g.category?.toLowerCase() === category.toLowerCase());
-    }
-    return res;
+    await ensureDb();
+    const filter = {};
+    if (!isAdmin) filter.isPublished = { $ne: false };
+    if (category && category !== 'All') filter.category = category;
+    const docs = await GalleryModel.find(filter).sort({ createdAt: -1 });
+    return formatDocs(docs);
   },
 
   async createGalleryItem(data) {
+    await ensureDb();
     const itemData = { isPublished: true, ...data };
-    if (getStatus()) {
-      try {
-        const created = await GalleryModel.create(itemData);
-        gallery.unshift(created.toObject ? created.toObject() : created);
-        return created;
-      } catch (err) {
-        console.warn('Fallback create gallery item:', err.message);
-      }
-    }
-    const item = { id: genId('gal'), ...itemData, createdAt: new Date().toISOString() };
-    gallery.unshift(item);
-    return item;
+    const created = await GalleryModel.create(itemData);
+    return formatDoc(created);
   },
 
   async updateGalleryItem(id, updates) {
-    if (getStatus()) {
-      try {
-        const updated = await GalleryModel.findByIdAndUpdate(id, { $set: updates }, { new: true });
-        if (updated) {
-          const idx = gallery.findIndex(g => g._id?.toString() === id || g.id === id);
-          if (idx !== -1) gallery[idx] = updated.toObject ? updated.toObject() : updated;
-          return updated;
-        }
-      } catch (err) {
-        console.warn('Fallback update gallery:', err.message);
-      }
-    }
-    const idx = gallery.findIndex(g => g.id === id || g._id?.toString() === id);
-    if (idx !== -1) {
-      gallery[idx] = { ...gallery[idx], ...updates };
-      return gallery[idx];
-    }
-    return null;
+    await ensureDb();
+    const updated = await GalleryModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true });
+    return formatDoc(updated);
   },
 
   async togglePublishGallery(id) {
-    if (getStatus()) {
-      try {
-        const doc = await GalleryModel.findById(id);
-        if (doc) {
-          doc.isPublished = !doc.isPublished;
-          await doc.save();
-          const idx = gallery.findIndex(g => g._id?.toString() === id || g.id === id);
-          if (idx !== -1) gallery[idx] = doc.toObject();
-          return doc;
-        }
-      } catch (err) {
-        console.warn('Fallback toggle gallery:', err.message);
-      }
-    }
-    const idx = gallery.findIndex(g => g.id === id || g._id?.toString() === id);
-    const newStatus = idx !== -1 ? !gallery[idx].isPublished : false;
-    return this.updateGalleryItem(id, { isPublished: newStatus });
+    await ensureDb();
+    const doc = await GalleryModel.findOne(buildQuery(id));
+    if (!doc) return null;
+    doc.isPublished = doc.isPublished === false ? true : false;
+    await doc.save();
+    return formatDoc(doc);
   },
 
   async deleteGalleryItem(id) {
-    if (getStatus()) {
-      try {
-        await GalleryModel.findByIdAndDelete(id);
-      } catch (err) {
-        console.warn('Fallback delete gallery:', err.message);
-      }
-    }
-    gallery = gallery.filter(g => g.id !== id && g._id?.toString() !== id);
-    return true;
+    await ensureDb();
+    const res = await GalleryModel.deleteOne(buildQuery(id));
+    return res.deletedCount > 0;
   },
 
-  // Online Tests & Assessments
+  // ==================== Online Tests & Assessments ====================
   async getTests(isAdmin = false) {
-    if (getStatus()) {
-      try {
-        const filter = isAdmin ? {} : { isPublished: { $ne: false } };
-        const docs = await TestModel.find(filter).sort({ createdAt: -1 });
-        return docs || [];
-      } catch (err) {
-        console.warn('Fallback for tests:', err.message);
-      }
-    }
-    let res = [...tests];
-    if (!isAdmin) res = res.filter(t => t.isPublished !== false);
-    return res;
+    await ensureDb();
+    const filter = isAdmin ? {} : { isPublished: { $ne: false } };
+    const docs = await TestModel.find(filter).sort({ createdAt: -1 });
+    return formatDocs(docs);
   },
 
   async getTestById(id) {
-    if (getStatus()) {
-      try {
-        const doc = await TestModel.findById(id);
-        if (doc) return doc;
-      } catch (err) {
-        console.warn('Fallback get test by id:', err.message);
-      }
-    }
-    return tests.find(t => t.id === id || t._id?.toString() === id);
+    await ensureDb();
+    const doc = await TestModel.findOne(buildQuery(id));
+    return formatDoc(doc);
   },
 
   async createTest(data) {
+    await ensureDb();
     const itemData = { isPublished: true, submissionsCount: 0, ...data };
-    if (getStatus()) {
-      try {
-        const created = await TestModel.create(itemData);
-        tests.unshift(created.toObject ? created.toObject() : created);
-        return created;
-      } catch (err) {
-        console.warn('Fallback create test:', err.message);
-      }
-    }
-    const item = { id: genId('test'), ...itemData, createdAt: new Date().toISOString() };
-    tests.unshift(item);
-    return item;
+    const created = await TestModel.create(itemData);
+    return formatDoc(created);
   },
 
   async updateTest(id, updates) {
-    if (getStatus()) {
-      try {
-        const updated = await TestModel.findByIdAndUpdate(id, { $set: updates }, { new: true });
-        if (updated) {
-          const idx = tests.findIndex(t => t._id?.toString() === id || t.id === id);
-          if (idx !== -1) tests[idx] = updated.toObject ? updated.toObject() : updated;
-          return updated;
-        }
-      } catch (err) {
-        console.warn('Fallback update test:', err.message);
-      }
-    }
-    const idx = tests.findIndex(t => t.id === id || t._id?.toString() === id);
-    if (idx !== -1) {
-      tests[idx] = { ...tests[idx], ...updates };
-      return tests[idx];
-    }
-    return null;
+    await ensureDb();
+    const updated = await TestModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true });
+    return formatDoc(updated);
   },
 
   async togglePublishTest(id) {
-    if (getStatus()) {
-      try {
-        const doc = await TestModel.findById(id);
-        if (doc) {
-          doc.isPublished = !doc.isPublished;
-          await doc.save();
-          const idx = tests.findIndex(t => t._id?.toString() === id || t.id === id);
-          if (idx !== -1) tests[idx] = doc.toObject();
-          return doc;
-        }
-      } catch (err) {
-        console.warn('Fallback toggle test:', err.message);
-      }
-    }
-    const idx = tests.findIndex(t => t.id === id || t._id?.toString() === id);
-    const newStatus = idx !== -1 ? !tests[idx].isPublished : false;
-    return this.updateTest(id, { isPublished: newStatus });
+    await ensureDb();
+    const doc = await TestModel.findOne(buildQuery(id));
+    if (!doc) return null;
+    doc.isPublished = doc.isPublished === false ? true : false;
+    await doc.save();
+    return formatDoc(doc);
   },
 
   async deleteTest(id) {
-    if (getStatus()) {
-      try {
-        await TestModel.findByIdAndDelete(id);
-      } catch (err) {
-        console.warn('Fallback delete test:', err.message);
-      }
-    }
-    tests = tests.filter(t => t.id !== id && t._id?.toString() !== id);
-    return true;
+    await ensureDb();
+    const res = await TestModel.deleteOne(buildQuery(id));
+    return res.deletedCount > 0;
   },
 
-  async submitTest(id, userAnswers, studentDetails = {}) {
-    const test = await this.getTestById(id);
+  async submitTest(testId, submissionData) {
+    await ensureDb();
+    const test = await TestModel.findOne(buildQuery(testId));
     if (!test) return null;
 
     let score = 0;
-    const results = (test.questions || []).map((q, idx) => {
-      const selected = userAnswers[idx];
-      const isCorrect = Number(selected) === Number(q.correctAnswer);
+    const studentAnswers = submissionData.answers || {};
+    const detailedResults = test.questions.map((q, qIndex) => {
+      const selected = studentAnswers[qIndex];
+      const isCorrect = selected !== undefined && Number(selected) === q.correctAnswer;
       if (isCorrect) score += (q.marks || 1);
       return {
+        questionIndex: qIndex,
         question: q.question,
-        selected,
-        correctAnswer: q.correctAnswer,
+        selectedOption: selected,
+        correctOption: q.correctAnswer,
         isCorrect,
         explanation: q.explanation
       };
     });
 
-    const totalPossible = (test.questions || []).reduce((acc, q) => acc + (q.marks || 1), 0);
-    const passed = score >= (test.passMarks || Math.ceil(totalPossible * 0.5));
-    const percentage = totalPossible > 0 ? Math.round((score / totalPossible) * 100) : 0;
+    const totalMarks = test.questions.reduce((sum, q) => sum + (q.marks || 1), 0);
+    const passed = score >= (test.passMarks || Math.ceil(totalMarks * 0.4));
 
-    const submissionData = {
-      testId: test._id || test.id,
+    const submissionDoc = await TestSubmissionModel.create({
+      testId: test._id,
       testTitle: test.title,
-      studentName: studentDetails.studentName?.trim() || 'Anonymous Student',
-      studentClass: studentDetails.studentClass?.trim() || 'General Batch',
-      rollNo: studentDetails.rollNo?.trim() || 'N/A',
-      studentEmail: studentDetails.studentEmail?.trim() || '',
+      studentName: submissionData.studentName || 'Anonymous Scholar',
+      studentEmail: submissionData.studentEmail || '',
+      studentRollNo: submissionData.studentRollNo || '',
       score,
-      totalPossible,
-      percentage,
+      totalMarks,
       passed,
-      timeSpentSeconds: Number(studentDetails.timeSpentSeconds) || 0,
-      answers: userAnswers,
-      submittedAt: new Date()
-    };
+      answers: detailedResults
+    });
 
-    if (getStatus()) {
-      try {
-        const createdSub = await TestSubmissionModel.create(submissionData);
-        testSubmissions.unshift(createdSub.toObject ? createdSub.toObject() : createdSub);
-      } catch (err) {
-        console.warn('Fallback save test submission:', err.message);
-        testSubmissions.unshift({ id: genId('sub'), ...submissionData, submittedAt: new Date().toISOString() });
-      }
-    } else {
-      testSubmissions.unshift({ id: genId('sub'), ...submissionData, submittedAt: new Date().toISOString() });
-    }
-
-    await this.updateTest(id, { submissionsCount: (test.submissionsCount || 0) + 1 });
+    test.submissionsCount = (test.submissionsCount || 0) + 1;
+    await test.save();
 
     return {
+      submissionId: submissionDoc._id.toString(),
+      testTitle: test.title,
+      studentName: submissionDoc.studentName,
       score,
-      totalPossible,
+      totalMarks,
+      percentage: totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0',
       passed,
-      percentage,
-      studentName: submissionData.studentName,
-      studentClass: submissionData.studentClass,
-      rollNo: submissionData.rollNo,
-      submittedAt: submissionData.submittedAt,
-      results
+      detailedResults
     };
   },
 
-  async getTestSubmissions(testId = null) {
-    if (getStatus()) {
-      try {
-        const filter = testId ? { $or: [{ testId }, { testId: testId.toString() }] } : {};
-        const docs = await TestSubmissionModel.find(filter).sort({ submittedAt: -1 });
-        return docs || [];
-      } catch (err) {
-        console.warn('Fallback get test submissions:', err.message);
-      }
-    }
-    if (testId) {
-      return testSubmissions.filter(s => s.testId === testId || s.testId?.toString() === testId);
-    }
-    return testSubmissions;
+  async getSubmissionsByTestId(testId) {
+    await ensureDb();
+    const docs = await TestSubmissionModel.find({ testId: buildQuery(testId)._id || testId }).sort({ createdAt: -1 });
+    return formatDocs(docs);
   },
 
-  async deleteTestSubmission(submissionId) {
-    if (getStatus()) {
-      try {
-        await TestSubmissionModel.findByIdAndDelete(submissionId);
-      } catch (err) {
-        console.warn('Fallback delete test submission:', err.message);
-      }
-    }
-    testSubmissions = testSubmissions.filter(s => s.id !== submissionId && s._id?.toString() !== submissionId);
-    return true;
+  async getAllSubmissions() {
+    await ensureDb();
+    const docs = await TestSubmissionModel.find().sort({ createdAt: -1 });
+    return formatDocs(docs);
   },
 
-  // Articles & Announcements
+  async deleteSubmission(subId) {
+    await ensureDb();
+    const res = await TestSubmissionModel.deleteOne(buildQuery(subId));
+    return res.deletedCount > 0;
+  },
+
+  // ==================== Articles & Study Notes ====================
   async getArticles(category, isAdmin = false) {
-    if (getStatus()) {
-      try {
-        const filter = {};
-        if (!isAdmin) filter.isPublished = { $ne: false };
-        if (category && category !== 'All') filter.category = category;
-        const docs = await ArticleModel.find(filter).sort({ createdAt: -1 });
-        return docs || [];
-      } catch (err) {
-        console.warn('Fallback for articles:', err.message);
-      }
-    }
-    let res = [...articles];
-    if (!isAdmin) res = res.filter(a => a.isPublished !== false);
-    if (category && category !== 'All') {
-      res = res.filter(a => a.category?.toLowerCase() === category.toLowerCase());
-    }
-    return res;
+    await ensureDb();
+    const filter = {};
+    if (!isAdmin) filter.isPublished = { $ne: false };
+    if (category && category !== 'All') filter.category = category;
+    const docs = await ArticleModel.find(filter).sort({ createdAt: -1 });
+    return formatDocs(docs);
   },
 
   async createArticle(data) {
-    const itemData = { isPublished: true, viewsCount: 0, date: new Date().toISOString().split('T')[0], ...data };
-    if (getStatus()) {
-      try {
-        const created = await ArticleModel.create(itemData);
-        articles.unshift(created.toObject ? created.toObject() : created);
-        return created;
-      } catch (err) {
-        console.warn('Fallback create article:', err.message);
-      }
-    }
-    const item = { id: genId('art'), ...itemData, createdAt: new Date().toISOString() };
-    articles.unshift(item);
-    return item;
+    await ensureDb();
+    const itemData = { isPublished: true, ...data };
+    const created = await ArticleModel.create(itemData);
+    return formatDoc(created);
   },
 
   async updateArticle(id, updates) {
-    if (getStatus()) {
-      try {
-        const updated = await ArticleModel.findByIdAndUpdate(id, { $set: updates }, { new: true });
-        if (updated) {
-          const idx = articles.findIndex(a => a._id?.toString() === id || a.id === id);
-          if (idx !== -1) articles[idx] = updated.toObject ? updated.toObject() : updated;
-          return updated;
-        }
-      } catch (err) {
-        console.warn('Fallback update article:', err.message);
-      }
-    }
-    const idx = articles.findIndex(a => a.id === id || a._id?.toString() === id);
-    if (idx !== -1) {
-      articles[idx] = { ...articles[idx], ...updates };
-      return articles[idx];
-    }
-    return null;
+    await ensureDb();
+    const updated = await ArticleModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true });
+    return formatDoc(updated);
   },
 
   async togglePublishArticle(id) {
-    if (getStatus()) {
-      try {
-        const doc = await ArticleModel.findById(id);
-        if (doc) {
-          doc.isPublished = !doc.isPublished;
-          await doc.save();
-          const idx = articles.findIndex(a => a._id?.toString() === id || a.id === id);
-          if (idx !== -1) articles[idx] = doc.toObject();
-          return doc;
-        }
-      } catch (err) {
-        console.warn('Fallback toggle article:', err.message);
-      }
-    }
-    const idx = articles.findIndex(a => a.id === id || a._id?.toString() === id);
-    const newStatus = idx !== -1 ? !articles[idx].isPublished : false;
-    return this.updateArticle(id, { isPublished: newStatus });
+    await ensureDb();
+    const doc = await ArticleModel.findOne(buildQuery(id));
+    if (!doc) return null;
+    doc.isPublished = doc.isPublished === false ? true : false;
+    await doc.save();
+    return formatDoc(doc);
   },
 
   async deleteArticle(id) {
-    if (getStatus()) {
-      try {
-        await ArticleModel.findByIdAndDelete(id);
-      } catch (err) {
-        console.warn('Fallback delete article:', err.message);
-      }
-    }
-    articles = articles.filter(a => a.id !== id && a._id?.toString() !== id);
-    return true;
+    await ensureDb();
+    const res = await ArticleModel.deleteOne(buildQuery(id));
+    return res.deletedCount > 0;
   },
 
-  // Contact Messages
+  // ==================== Messages & Inquiries ====================
   async getMessages() {
-    if (getStatus()) {
-      try {
-        const docs = await MessageModel.find().sort({ createdAt: -1 });
-        return docs || [];
-      } catch (err) {
-        console.warn('Fallback for messages:', err.message);
-      }
-    }
-    return messages;
+    await ensureDb();
+    const docs = await MessageModel.find().sort({ createdAt: -1 });
+    return formatDocs(docs);
   },
 
   async createMessage(data) {
-    if (getStatus()) {
-      try {
-        const created = await MessageModel.create(data);
-        messages.unshift(created.toObject ? created.toObject() : created);
-        return created;
-      } catch (err) {
-        console.warn('Fallback create message:', err.message);
-      }
-    }
-    const item = { id: genId('msg'), ...data, isRead: false, replyStatus: 'Pending', createdAt: new Date().toISOString() };
-    messages.unshift(item);
-    return item;
+    await ensureDb();
+    const created = await MessageModel.create({ isRead: false, ...data });
+    return formatDoc(created);
   },
 
   async markMessageRead(id, isRead = true) {
-    if (getStatus()) {
-      try {
-        const updated = await MessageModel.findByIdAndUpdate(id, { $set: { isRead } }, { new: true });
-        if (updated) {
-          const idx = messages.findIndex(m => m._id?.toString() === id || m.id === id);
-          if (idx !== -1) messages[idx] = updated.toObject ? updated.toObject() : updated;
-          return updated;
-        }
-      } catch (err) {
-        console.warn('Fallback mark message read:', err.message);
-      }
-    }
-    const idx = messages.findIndex(m => m.id === id || m._id?.toString() === id);
-    if (idx !== -1) {
-      messages[idx].isRead = isRead;
-      return messages[idx];
-    }
-    return null;
+    await ensureDb();
+    const updated = await MessageModel.findOneAndUpdate(buildQuery(id), { $set: { isRead } }, { new: true });
+    return formatDoc(updated);
   },
 
   async deleteMessage(id) {
-    if (getStatus()) {
-      try {
-        await MessageModel.findByIdAndDelete(id);
-      } catch (err) {
-        console.warn('Fallback delete message:', err.message);
-      }
-    }
-    messages = messages.filter(m => m.id !== id && m._id?.toString() !== id);
-    return true;
+    await ensureDb();
+    const res = await MessageModel.deleteOne(buildQuery(id));
+    return res.deletedCount > 0;
   },
 
-  // Dashboard Stats
+  // ==================== Dashboard Stats ====================
   async getDashboardStats() {
-    const pubs = await this.getPublications({}, true);
-    const awds = await this.getAwards(true);
-    const wkps = await this.getWorkshops(true);
-    const prjs = await this.getProjects(true);
-    const gals = await this.getGallery('All', true);
-    const tsts = await this.getTests(true);
-    const arts = await this.getArticles('All', true);
-    const msgs = await this.getMessages();
-    const unreadMsgs = msgs.filter(m => !m.isRead).length;
+    await ensureDb();
+    const [
+      publicationsCount,
+      awardsCount,
+      workshopsCount,
+      projectsCount,
+      galleryCount,
+      testsCount,
+      articlesCount,
+      totalMessages,
+      unreadMessages
+    ] = await Promise.all([
+      PublicationModel.countDocuments(),
+      AwardModel.countDocuments(),
+      WorkshopModel.countDocuments(),
+      ProjectModel.countDocuments(),
+      GalleryModel.countDocuments(),
+      TestModel.countDocuments(),
+      ArticleModel.countDocuments(),
+      MessageModel.countDocuments(),
+      MessageModel.countDocuments({ isRead: false })
+    ]);
 
     return {
-      publicationsCount: pubs.length,
-      awardsCount: awds.length,
-      workshopsCount: wkps.length,
-      projectsCount: prjs.length,
-      galleryCount: gals.length,
-      testsCount: tsts.length,
-      articlesCount: arts.length,
-      totalMessages: msgs.length,
-      unreadMessages: unreadMsgs,
-      databaseStatus: getStatus() ? 'Connected to MongoDB Atlas' : 'Local In-Memory Cache (Sync ready)'
+      publicationsCount,
+      awardsCount,
+      workshopsCount,
+      projectsCount,
+      galleryCount,
+      testsCount,
+      articlesCount,
+      totalMessages,
+      unreadMessages,
+      databaseStatus: isDbConnected() ? 'MongoDB Atlas (Connected)' : 'Disconnected'
     };
   }
 };

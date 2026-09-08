@@ -35,6 +35,10 @@ const AwardSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  isPublished: {
+    type: Boolean,
+    default: true,
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.models.Award || mongoose.model('Award', AwardSchema);
