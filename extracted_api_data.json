@@ -1,0 +1,367 @@
+{
+  "journals": [
+    {
+      "sno": "1",
+      "title_authors": "Vaishali Laxmikant Thakare, Smita Kasar, \u201cPredicting and classifying user\u2019s behavior for improving student\u2019s information literacy using Kernel techniques\u201d",
+      "journal_vol": "Journal of Information Systems Engineering and Management (Accepted and In Press)",
+      "indexing": "Scopus",
+      "issn": "2468-4376",
+      "author_order": "Second Author",
+      "impact_factor": "-"
+    },
+    {
+      "sno": "2",
+      "title_authors": "Daivashala Deshmukh, Smita Kasar, Mental Health Prediction in the Era of AI: The Review of Machine Learning Techniques and Ethical Concerns\"",
+      "journal_vol": "Journal of Psychopathology (Accepted and In Press)",
+      "indexing": "SCI",
+      "issn": "2284-0249",
+      "author_order": "Second Author",
+      "impact_factor": "0.9"
+    },
+    {
+      "sno": "3",
+      "title_authors": "Daivashala Deshmukh, Smita Kasar  \u201cNavigating the Complexities of Machine Learning in Mental Health Prognosis: Paradigms and Challenges\u201d",
+      "journal_vol": "International Journal of Environmental Sciences.  (Accepted and In Press)",
+      "indexing": "Scopus",
+      "issn": "2229-7359",
+      "author_order": "Second Author",
+      "impact_factor": "1.71"
+    },
+    {
+      "sno": "4",
+      "title_authors": "Sushama Deshmukh, Smita Kasar,  \"A comprehensive survey of the privacy preservation models for secure data sharing in Decentralized Cloud\"",
+      "journal_vol": "International Journal of Security and Networks, InderScience. In Press. (Acceptance received- June 2025 )",
+      "indexing": "Scopus",
+      "issn": "1747-8413",
+      "author_order": "Second Author",
+      "impact_factor": "0.7"
+    },
+    {
+      "sno": "5",
+      "title_authors": "Sandip S. Kankal, Smita Kasar, A Systematic Review on Machine Learning Techniques for Liver Disease Detection, Biomedical Materials & Devices",
+      "journal_vol": "Springer, 5 May 2025, https://doi.org/10.1007/s44174-025-00341-1",
+      "indexing": "ESCI",
+      "issn": "2731-4812",
+      "author_order": "Second Author",
+      "impact_factor": "4.27"
+    },
+    {
+      "sno": "6",
+      "title_authors": "Yogesh Suresh Chichani, Smita L. Kasar \u201c An efficient IoT enabled heart disease prediction model using Finch hunt optimization modified BiLSTM classifier\u201d",
+      "journal_vol": "Biomedical Signal Processing and Control, Elsevier, February 2025 https://doi.org/10.1016/j.bspc.2024.107170",
+      "indexing": "SCI",
+      "issn": "1746-8108",
+      "author_order": "Second Author",
+      "impact_factor": "4.9"
+    },
+    {
+      "sno": "7",
+      "title_authors": "Sushama Deshmukh, Smita Kasar, \u201cApplications of blockchain technology in privacy preserving and data security for real time (data) applications\u201d",
+      "journal_vol": "Journal-Concurrency and Computation Practice and Experience, Wiley, September 2024",
+      "indexing": "SCI",
+      "issn": "1532-0634",
+      "author_order": "Second Author",
+      "impact_factor": "1.5"
+    },
+    {
+      "sno": "8",
+      "title_authors": "Sandeep Gite, Smita Kasar, \u201cEnhancing Security for NFV-Based IOT Networks through Machine Learning: A Comprehensive Review and Analysis\u201d",
+      "journal_vol": "Educational Administration: Theory and Practice, Vol 30, May 2024",
+      "indexing": "Scopus",
+      "issn": "2148-2403",
+      "author_order": "Second Author",
+      "impact_factor": "1.02"
+    },
+    {
+      "sno": "9",
+      "title_authors": "Sarika Zile, Smita Kasar, Daivashala Deshmukh, \u201cReview on Machine Learning Based Hybrid Model for Suicide Attempt Prediction\u201d Volume: 07 Issue: 02 | February - 2023, ISSN: 2582-3930",
+      "journal_vol": "International Journal of Scientific Research in Engineering and Management (IJSREM)",
+      "indexing": "Refereed",
+      "issn": "2582-3930",
+      "author_order": "Second Author",
+      "impact_factor": "-"
+    },
+    {
+      "sno": "10",
+      "title_authors": "Kuyare Sunil, Ginodia Saumitra, Warke Himangi, Kasar Smita, Bhosle Vaibhav, Nataraj Gita, \u201cUtility of the Biomedical Waste (BMW) Mobile App for Auditing BMW Segregation Practices in a Surgical Discipline of a Tertiary Care Hospital\u201d,",
+      "journal_vol": "International Journal of Pharmaceutical and Clinical Research 2023; 15(4); 1020-1026",
+      "indexing": "Refereed",
+      "issn": "0975 1556",
+      "author_order": "Others",
+      "impact_factor": "-"
+    },
+    {
+      "sno": "11",
+      "title_authors": "Meghana Kshirsagar, Gauri Vaidya, Yao Yao, Smita Kasar, Conor Ryan, \u201cSENSIBLE: SEquestered aNd SynergIstic Blockchain Ecosystem\u201d",
+      "journal_vol": "Engineering Reports, Wiley Online Library, Nov 2022,  https://doi.org/10.1002/eng2.12586",
+      "indexing": "SCI",
+      "issn": "2577-8196",
+      "author_order": "Others",
+      "impact_factor": "2"
+    },
+    {
+      "sno": "12",
+      "title_authors": "Vedant Karmalkar, Kanchan Bhalerao, Gaurav Kaje, Asra Anjum, Smita Kasar, \u201cTwego Trending: Data Analytics Based Search Engine Using Elasticsearch\u201d,",
+      "journal_vol": "Turkish Journal of Computer and Mathematics Education, Vol.12 No.1S (2021), pp:246-251",
+      "indexing": "Scopus",
+      "issn": "1309-4653",
+      "author_order": "other",
+      "impact_factor": "-"
+    },
+    {
+      "sno": "13",
+      "title_authors": "Mayuri Likhar, Smita Kasar, \u201cReview on Aspect Based Sentiment Analysis Using Sentence Minimization\u201d",
+      "journal_vol": "International Journal of Computer Sciences and Engineering, Volume-5, Issue-10, Page no. 338-341, https://www.ijcseonline.org/full_paper_view.php?paper_id=1525, Oct-2017.",
+      "indexing": "UGC  No: 5613",
+      "issn": "2347-2693",
+      "author_order": "Second Author",
+      "impact_factor": "-"
+    },
+    {
+      "sno": "14",
+      "title_authors": "Minal Vanarse, Smita Kasar, \u201cMultilevel Association Rule Mining for Large Datasets: A Review\u201d",
+      "journal_vol": "International Journal of Advanced Research in Computer Science, Volume 8, No. 8, September-October 2017, pp:583-586, DOI:http://dx.doi.org/10.26483/ijarcs.v8i8.4793",
+      "indexing": "Refereed",
+      "issn": "0976-5697",
+      "author_order": "Second Author",
+      "impact_factor": "-"
+    },
+    {
+      "sno": "15",
+      "title_authors": "Smita Kasar, M.S.Joshi, \u201cImproved Model for the detection of Myocardial Infarction from Multilead ECG using QRS Point Score as an Additional Feature\u201d,",
+      "journal_vol": "Journal of Theoretical and Applied Information Technology,  Vol.85. No.2, March 2016, pp 183-191",
+      "indexing": "Scopus",
+      "issn": "1992-8645",
+      "author_order": "First Author",
+      "impact_factor": "0.22"
+    },
+    {
+      "sno": "16",
+      "title_authors": "Smita Kasar, M.S.Joshi , \u201cAnalysis of Multi-Lead ECG Signals using Decision Tree Algorithms\u201d",
+      "journal_vol": "International Journal of Computer Applications,   Vol. 134, No 16, January 2016,pp 27-30",
+      "indexing": "SCI",
+      "issn": "0975 - 8887",
+      "author_order": "First Author",
+      "impact_factor": "0.7"
+    },
+    {
+      "sno": "17",
+      "title_authors": "Archana Salunke, Smita Kasar, \u201cPersonalized Recommendation System for Medical Assistance using Hybrid Filtering\u201d",
+      "journal_vol": "International Journal of\u00a0Computer Applications 128(9):6-10, October 2015.",
+      "indexing": "SCI",
+      "issn": "0975 - 8887",
+      "author_order": "Second Author",
+      "impact_factor": "0.7"
+    },
+    {
+      "sno": "18",
+      "title_authors": "Smita Kasar, M.S.Joshi, \u201cIdentification of Myocardial Infarction from Multi-lead ECG signal\u201d,",
+      "journal_vol": "International Journal of Engineering Research and Applications ISSN: 2248-9622, Vol. 5, Issue 10, October 2015, pp.28-32",
+      "indexing": "Refereed",
+      "issn": "2248-9622",
+      "author_order": "First Author",
+      "impact_factor": "-"
+    },
+    {
+      "sno": "19",
+      "title_authors": "Deshmukh Priyanka, Smita Kasar,  \u201cSecurity Improvisation in Steganography using AES 128/192/256\u201d",
+      "journal_vol": "International Journal of Engineering Research & Technology , Vol. 3 - Issue 11 (November - 2014)",
+      "indexing": "Refereed",
+      "issn": "2278-0181",
+      "author_order": "Second Author",
+      "impact_factor": "-"
+    },
+    {
+      "sno": "20",
+      "title_authors": "Smita Kasar, M.S.Joshi,   \u201cPerformance of digital filters for noise & signal removal from ECG signals in time domain\u201d, Engineering (IJIREEICE), vol 2 issue 4,April 2014.",
+      "journal_vol": "International Journal of Innovative Research in Electrical, Electronics, Instrumentation & Control",
+      "indexing": "Refereed",
+      "issn": "2321-2004",
+      "author_order": "First Author",
+      "impact_factor": "-"
+    },
+    {
+      "sno": "21",
+      "title_authors": "Abhilasha Mishra, GB Janvale, Smita Kasar, S Verma, A Janardan, \u201cLevenberg-Marquardt & Conjugate Gradient Neuro-modeling of Simulated Miniature Rectangular Microstrip Antenna\u201d,",
+      "journal_vol": "Advanced Computational Techniques in Electromagnetics",
+      "indexing": "Scopus",
+      "issn": "2194-0266",
+      "author_order": "Other",
+      "impact_factor": "0.8"
+    },
+    {
+      "sno": "22",
+      "title_authors": "Abhilasha Mishra, V Bhagile, Smita Kasar, PM Patil, \u201cEffect of Normalized Scale on Design of Rectangular Microstrip Antenna by using FFBP\u201d",
+      "journal_vol": "International Journal of Computer Science and Engineering, Vol. 02, No. 03, 2010, 626-629",
+      "indexing": "UGC   No: 63193",
+      "issn": "2347-2693",
+      "author_order": "Other",
+      "impact_factor": "-"
+    },
+    {
+      "sno": "23",
+      "title_authors": "Smita Kasar, Abbhilasha Mishra, P.S.Revankar,.\u00a0 \"Quadratic Programming Problems using Genetic Algorithms\"",
+      "journal_vol": "International Journal of Computer Science and Management Systems-Vol. 2 No. 1 (Jan-June 2010), pp 17-20",
+      "indexing": "Refereed",
+      "issn": "0975-5349",
+      "author_order": "First Author",
+      "impact_factor": "-"
+    }
+  ],
+  "chapters": [
+    [
+      "1.",
+      "Sushama Deshmukh, Smita Kasar, \"Significance of Software Engineering phases in the development of a software application: Case Study\", Book Chapter, \u201cDesign of User Interfaces with a Data Science Approach\u201d",
+      "IGI Global, 2022, Designing User Interfaces with a Data Science Approach, IGI https://www.igi-global.com/chapter/significance-of-software-engineering-phases-in-the-development-of-a-software-application/299749",
+      "Second Author",
+      "International",
+      "05",
+      ""
+    ],
+    [
+      "2.",
+      "Smita Kasar, Meghana Kshirsagar, \u201cOpen Challenges in Smart Cities: Privacy and Security\u201d, Book chapter published in book \u201cSecurity and Privacy Applications for Smart City Development\u201d, in the Springer series: \"Studies in Systems, Decision and Control\", (SSDC)",
+      "Studies in Systems, Decision and Control\", (SSDC), Springer series,  https://www.springerprofessional.de/en/open-challenges-in-smart-cities-privacy-and-security/18439350, October 2020",
+      "First Author",
+      "International",
+      "05",
+      ""
+    ]
+  ],
+  "phd_scholars": [
+    [
+      "1",
+      "Sushama Deshmukh",
+      "11279",
+      "-",
+      ""
+    ],
+    [
+      "2",
+      "Daivashala Deshmukh",
+      "16484",
+      "-",
+      ""
+    ],
+    [
+      "3",
+      "Sandip Kankal",
+      "16566",
+      "-",
+      ""
+    ],
+    [
+      "4",
+      "Sandip Gite",
+      "19406",
+      "-",
+      ""
+    ],
+    [
+      "5",
+      "Natasha Shaikh",
+      "10045",
+      "-",
+      ""
+    ],
+    [
+      "6",
+      "Sarika Zile",
+      "34750",
+      "-",
+      ""
+    ]
+  ],
+  "pg_scholars": [
+    [
+      "1",
+      "Sarika Zile",
+      "21151210002",
+      "Awarded 2024",
+      ""
+    ],
+    [
+      "2",
+      "Yogesh Chichani",
+      "",
+      "Awarded 2023",
+      ""
+    ],
+    [
+      "3",
+      "Mayuri Likhar",
+      "",
+      "Awarded 2017",
+      ""
+    ],
+    [
+      "4",
+      "Minal Vanarse",
+      "",
+      "Awarded 2017",
+      ""
+    ],
+    [
+      "5",
+      "Archana Salunke",
+      "9D0000610",
+      "Awarded 2015",
+      ""
+    ],
+    [
+      "6",
+      "Priyanka Deshmukh",
+      "506102",
+      "Awarded 2014",
+      ""
+    ]
+  ],
+  "projects_raw": [
+    [
+      "Completed"
+    ],
+    [
+      "S. No.",
+      "Title of the Project",
+      "Funding Agency",
+      "Period",
+      "Sanctioned Grant/Amount",
+      "Self Assessed Score",
+      "Score verified by Screening Committee"
+    ],
+    [
+      "1.",
+      "Diskless client using Open-Source Tech for school education",
+      "Rajiv Gandhi Science and TechnologyCommission",
+      "Nov-22 (one year)",
+      "3.8 Lakhs",
+      ""
+    ],
+    [
+      "Ongoing"
+    ],
+    [
+      "1.",
+      ""
+    ],
+    [
+      "Consultancy"
+    ],
+    [
+      "1.",
+      "A Website for Government Dental College & Hospital Chh. Sambhajinagar",
+      "Government Dental College & Hospital  Chh. Sambhajinagar",
+      "2024 onwards",
+      "Rs. 75000 and Rs. 20,000 Annual Maintenance Fees",
+      ""
+    ],
+    [
+      "2.",
+      "Biomedical Waste Management\u00a0Audit Tool (software), Copyright Registration: SW-12097/2019",
+      "Hospitals in Pune, Mumbai",
+      "2019- 2022",
+      "Rs. 40,000",
+      ""
+    ]
+  ]
+}
