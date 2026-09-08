@@ -116,7 +116,7 @@ const AdminDashboard = () => {
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-display">
-                    {loading ? '...' : card.count}
+                    {card.count ?? 0}
                   </span>
                   {card.badge && (
                     <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold animate-pulse">
