@@ -6,19 +6,49 @@ import {
   Trash2, 
   X, 
   Eye, 
-  EyeOff,
-  Upload,
-  Link as LinkIcon,
-  Loader2,
-  FileCheck,
-  CheckCircle2
+  EyeOff, 
+  Upload, 
+  Link as LinkIcon, 
+  Loader2, 
+  FileCheck, 
+  CheckCircle2,
+  Search,
+  Calendar,
+  Building,
+  Clock
 } from 'lucide-react';
 import { workshopService, uploadService } from '../../services/api';
-import { initialWorkshops } from '../../data/fallbackData';
+
+const EVENT_TYPES = [
+  'FDP',
+  'Workshop',
+  'STTP',
+  'Keynote / Invited Talk',
+  'Hackathon',
+  'Seminar',
+  'Conference',
+  'Masterclass',
+  'Webinar',
+  'Training Program',
+  'Other'
+];
+
+const EVENT_ROLES = [
+  'Chief Convener & Organizer',
+  'Organized / Convener',
+  'Keynote Speaker',
+  'Resource Person',
+  'Session Chair',
+  'Coordinator',
+  'Expert Faculty',
+  'Attended / Participant',
+  'Other'
+];
 
 const AdminWorkshops = () => {
   const [workshops, setWorkshops] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [statusMsg, setStatusMsg] = useState(null);
@@ -27,10 +57,10 @@ const AdminWorkshops = () => {
 
   const initialForm = {
     title: '',
-    role: 'Resource Person / Keynote',
-    type: 'Keynote',
-    date: '',
-    duration: 'Full Day',
+    role: 'Organized / Convener',
+    type: 'FDP',
+    date: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+    duration: '1 Week',
     institution: 'Maharashtra Institute of Technology, Chhatrapati Sambhajinagar',
     description: '',
     posterUrl: '',
@@ -70,7 +100,7 @@ const AdminWorkshops = () => {
       type: wkp.type || 'FDP',
       date: wkp.date || '',
       duration: wkp.duration || '1 Week',
-      institution: wkp.institution || '',
+      institution: wkp.institution || 'Maharashtra Institute of Technology, Chhatrapati Sambhajinagar',
       description: wkp.description || '',
       posterUrl: wkp.posterUrl || '',
       isPublished: wkp.isPublished !== false
@@ -88,7 +118,7 @@ const AdminWorkshops = () => {
       const res = await uploadService.uploadFile(file);
       if (res.data.success) {
         setFormData(prev => ({ ...prev, posterUrl: res.data.data.url }));
-        setStatusMsg({ type: 'success', text: `Event material "${file.name}" uploaded successfully!` });
+        setStatusMsg({ type: 'success', text: `Event poster/material "${file.name}" uploaded successfully!` });
       }
     } catch (err) {
       setStatusMsg({ type: 'error', text: 'Failed to upload file: ' + (err.response?.data?.message || err.message) });
@@ -101,21 +131,28 @@ const AdminWorkshops = () => {
     try {
       const res = await workshopService.togglePublish(id);
       setStatusMsg({ type: 'success', text: res.data.message });
-      fetchWorkshops();
+      const updatedList = await workshopService.getAll();
+      if (updatedList.data?.success && Array.isArray(updatedList.data.data)) {
+        setWorkshops(updatedList.data.data);
+      }
     } catch (err) {
       setStatusMsg({ type: 'error', text: 'Failed to toggle publish status.' });
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this workshop entry?')) return;
+    if (!window.confirm('Delete this workshop/event entry? This cannot be undone.')) return;
     setWorkshops(prev => prev.filter(w => (w.id || w._id) !== id));
     try {
       await workshopService.delete(id);
-      setStatusMsg({ type: 'success', text: 'Workshop deleted successfully.' });
-      fetchWorkshops();
+      setStatusMsg({ type: 'success', text: 'Workshop/event deleted successfully.' });
+      const res = await workshopService.getAll();
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setWorkshops(res.data.data);
+      }
     } catch (err) {
-      setStatusMsg({ type: 'error', text: 'Failed to delete workshop.' });
+      const errMsg = err.response?.data?.message || err.message || 'Failed to delete workshop.';
+      setStatusMsg({ type: 'error', text: `Failed to delete: ${errMsg}` });
       fetchWorkshops();
     }
   };
@@ -125,23 +162,40 @@ const AdminWorkshops = () => {
     try {
       const payload = {
         ...formData,
+        title: formData.title.trim(),
+        institution: formData.institution.trim(),
         posterUrl: formData.posterUrl.trim()
       };
 
       if (editingItem) {
         const id = editingItem.id || editingItem._id;
         await workshopService.update(id, payload);
-        setStatusMsg({ type: 'success', text: 'Workshop updated successfully!' });
+        setStatusMsg({ type: 'success', text: 'Workshop/event updated successfully!' });
       } else {
         await workshopService.create(payload);
-        setStatusMsg({ type: 'success', text: 'Workshop added and published successfully!' });
+        setStatusMsg({ type: 'success', text: 'Workshop/event created and published successfully!' });
       }
       setModalOpen(false);
-      fetchWorkshops();
+      const res = await workshopService.getAll();
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setWorkshops(res.data.data);
+      }
     } catch (err) {
-      setStatusMsg({ type: 'error', text: 'Error saving workshop.' });
+      const errMsg = err.response?.data?.message || err.message || 'Error saving workshop.';
+      setStatusMsg({ type: 'error', text: `Failed to save: ${errMsg}` });
     }
   };
+
+  const filteredWorkshops = workshops.filter(w => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      w.title?.toLowerCase().includes(q) ||
+      w.institution?.toLowerCase().includes(q) ||
+      w.role?.toLowerCase().includes(q) ||
+      w.type?.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -153,13 +207,13 @@ const AdminWorkshops = () => {
             Manage Events, FDPs & Workshops
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Manage Faculty Development Programs, STTPs, masterclasses, posters, and publish visibility.
+            Create, edit, and organize Faculty Development Programs, national workshops, STTPs, and masterclasses.
           </p>
         </div>
 
         <button
           onClick={openCreateModal}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold mac-btn-primary text-white shadow-md transition-all cursor-pointer"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold mac-btn-primary text-white shadow-md transition-all cursor-pointer hover:opacity-95"
         >
           <Plus className="w-4 h-4" />
           <span>Add Event / Workshop</span>
@@ -178,79 +232,146 @@ const AdminWorkshops = () => {
         </div>
       )}
 
-      {/* Table List */}
-      <div className="mac-card overflow-hidden shadow-sm">
-        <table className="w-full text-left text-xs">
-          <thead>
-            <tr className="bg-slate-50/50 dark:bg-white/5 border-b border-slate-200/80 dark:border-white/10 text-slate-500 dark:text-slate-400 font-semibold uppercase">
-              <th className="p-4">Event & Institution</th>
-              <th className="p-4">Type</th>
-              <th className="p-4">Role</th>
-              <th className="p-4">Date & Duration</th>
-              <th className="p-4">Status</th>
-              <th className="p-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200/80 dark:divide-white/10">
-            {workshops.map((wkp) => {
-              const id = wkp.id || wkp._id;
-              return (
-                <tr key={id} className="hover:bg-slate-50/50 dark:hover:bg-white/5">
-                  <td className="p-4 max-w-sm">
-                    <div className="font-bold text-slate-900 dark:text-white line-clamp-2">
-                      {wkp.title}
-                    </div>
-                    <div className="text-slate-500 dark:text-slate-400 mt-0.5">{wkp.institution}</div>
-                  </td>
-                  <td className="p-4 whitespace-nowrap">
-                    <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-white/10 font-bold text-slate-700 dark:text-slate-300">
-                      {wkp.type}
-                    </span>
-                  </td>
-                  <td className="p-4 whitespace-nowrap text-academic-600 dark:text-academic-400 font-semibold">
-                    {wkp.role}
-                  </td>
-                  <td className="p-4 whitespace-nowrap font-mono text-slate-600 dark:text-slate-400">
-                    {wkp.date} ({wkp.duration})
-                  </td>
-                  <td className="p-4 whitespace-nowrap">
-                    <button
-                      onClick={() => handleTogglePublish(id)}
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold cursor-pointer transition-colors ${
-                        wkp.isPublished !== false
-                          ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
-                          : 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
-                      }`}
-                    >
-                      {wkp.isPublished !== false ? (
-                        <>
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Published</span>
-                        </>
-                      ) : (
-                        <>
-                          <EyeOff className="w-3.5 h-3.5" />
-                          <span>Draft</span>
-                        </>
-                      )}
-                    </button>
-                  </td>
-                  <td className="p-4 text-right whitespace-nowrap space-x-2">
-                    <button onClick={() => openEditModal(wkp)} className="p-1.5 text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-white/10 rounded">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleDelete(id)} className="p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      {/* Search Filter Bar */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search workshops, FDPs, institutes..."
+            className="w-full pl-9 pr-4 py-2 rounded-xl text-xs bg-white dark:bg-navy-900 border border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-academic-500"
+          />
+        </div>
+        <div className="text-xs text-slate-500 font-mono">
+          Showing {filteredWorkshops.length} of {workshops.length} events
+        </div>
       </div>
 
-      {/* Modal */}
+      {/* Content Area */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+          <Loader2 className="w-8 h-8 animate-spin text-academic-500 mb-3" />
+          <p className="text-sm font-medium">Loading workshops & FDPs from database...</p>
+        </div>
+      ) : filteredWorkshops.length === 0 ? (
+        <div className="mac-card rounded-3xl p-12 text-center space-y-4 max-w-md mx-auto">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-academic-500/10 text-academic-500 flex items-center justify-center">
+            <Presentation className="w-7 h-7" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            {searchQuery ? 'No Matching Events Found' : 'No Workshops or FDPs Added Yet'}
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {searchQuery ? 'Try clearing your search query to see all events.' : 'Add your first faculty development program, keynote talk, or training workshop.'}
+          </p>
+          <button
+            onClick={openCreateModal}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold mac-btn-primary text-white shadow-md cursor-pointer hover:opacity-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Event / Workshop</span>
+          </button>
+        </div>
+      ) : (
+        <div className="mac-card overflow-hidden shadow-sm rounded-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="bg-slate-50/50 dark:bg-white/5 border-b border-slate-200/80 dark:border-white/10 text-slate-500 dark:text-slate-400 font-semibold uppercase">
+                  <th className="p-4">Event & Institution</th>
+                  <th className="p-4">Type</th>
+                  <th className="p-4">Role</th>
+                  <th className="p-4">Date & Duration</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200/80 dark:divide-white/10">
+                {filteredWorkshops.map((wkp) => {
+                  const id = wkp.id || wkp._id;
+                  return (
+                    <tr key={id} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
+                      <td className="p-4 max-w-sm">
+                        <div className="font-bold text-slate-900 dark:text-white line-clamp-2">
+                          {wkp.title}
+                        </div>
+                        <div className="text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1 text-[11px]">
+                          <Building className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{wkp.institution}</span>
+                        </div>
+                        {wkp.posterUrl && (
+                          <div className="mt-1">
+                            <span className="inline-flex items-center gap-1 text-[10px] text-academic-600 dark:text-academic-400 font-mono">
+                              <FileCheck className="w-3 h-3" /> Attached Material
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-4 whitespace-nowrap">
+                        <span className="px-2.5 py-1 rounded-md bg-academic-500/10 text-academic-700 dark:text-academic-300 font-bold border border-academic-500/20">
+                          {wkp.type || 'Workshop'}
+                        </span>
+                      </td>
+                      <td className="p-4 whitespace-nowrap text-slate-700 dark:text-slate-200 font-semibold">
+                        {wkp.role || 'Convener'}
+                      </td>
+                      <td className="p-4 whitespace-nowrap font-mono text-slate-600 dark:text-slate-400">
+                        <div>{wkp.date}</div>
+                        <div className="text-[10px] text-slate-400">{wkp.duration || '1 Week'}</div>
+                      </td>
+                      <td className="p-4 whitespace-nowrap">
+                        <button
+                          onClick={() => handleTogglePublish(id)}
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold cursor-pointer transition-colors ${
+                            wkp.isPublished !== false
+                              ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                              : 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                          }`}
+                          title="Click to toggle publish visibility"
+                        >
+                          {wkp.isPublished !== false ? (
+                            <>
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>Published</span>
+                            </>
+                          ) : (
+                            <>
+                              <EyeOff className="w-3.5 h-3.5" />
+                              <span>Draft</span>
+                            </>
+                          )}
+                        </button>
+                      </td>
+                      <td className="p-4 text-right whitespace-nowrap space-x-1">
+                        <button 
+                          onClick={() => openEditModal(wkp)} 
+                          className="p-2 text-slate-600 dark:text-slate-300 hover:bg-academic-50 dark:hover:bg-white/10 rounded-lg cursor-pointer transition-colors inline-flex items-center gap-1"
+                          title="Edit Workshop/FDP"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 text-academic-600" />
+                          <span className="text-[11px] font-semibold">Edit</span>
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(id)} 
+                          className="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-lg cursor-pointer transition-colors inline-flex items-center gap-1"
+                          title="Delete Workshop/FDP"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="text-[11px] font-semibold">Delete</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Create & Edit Workshop / FDP */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
           <div className="relative max-w-lg w-full max-h-[90vh] overflow-y-auto mac-card rounded-3xl p-6 shadow-2xl space-y-4">
@@ -263,7 +384,7 @@ const AdminWorkshops = () => {
               <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white">
                 {editingItem ? 'Edit Workshop / Event' : 'Add Workshop / FDP Event'}
               </h3>
-              <button onClick={() => setModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white">
+              <button onClick={() => setModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -276,52 +397,54 @@ const AdminWorkshops = () => {
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   required
-                  placeholder="e.g. 1-Week National Level FDP on Generative AI"
+                  placeholder="e.g. 1-Week National Level FDP on Generative AI & Deep Learning"
                   className="w-full px-3.5 py-2 rounded-xl bg-white/70 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-academic-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 dark:text-slate-300">Type</label>
+                  <label className="font-semibold text-slate-700 dark:text-slate-300">Event Type</label>
                   <select
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-white/70 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-navy-950 border border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white"
                   >
-                    <option value="FDP">FDP</option>
-                    <option value="Workshop">Workshop</option>
-                    <option value="STTP">STTP</option>
-                    <option value="Seminar">Seminar</option>
-                    <option value="Conference">Conference</option>
+                    {EVENT_TYPES.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                    {!EVENT_TYPES.includes(formData.type) && (
+                      <option value={formData.type}>{formData.type}</option>
+                    )}
                   </select>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 dark:text-slate-300">Role</label>
+                  <label className="font-semibold text-slate-700 dark:text-slate-300">Your Role</label>
                   <select
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-white/70 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-navy-950 border border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white"
                   >
-                    <option value="Organized / Convener">Organized / Convener</option>
-                    <option value="Keynote Speaker">Keynote Speaker</option>
-                    <option value="Resource Person">Resource Person</option>
-                    <option value="Session Chair">Session Chair</option>
-                    <option value="Attended">Attended</option>
+                    {EVENT_ROLES.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                    {!EVENT_ROLES.includes(formData.role) && (
+                      <option value={formData.role}>{formData.role}</option>
+                    )}
                   </select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 dark:text-slate-300">Date String *</label>
+                  <label className="font-semibold text-slate-700 dark:text-slate-300">Date / Date Range *</label>
                   <input
                     type="text"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     required
-                    placeholder="e.g. Jan 15-20, 2024"
+                    placeholder="e.g. Jan 15-20, 2024 or 20 - 27 July 2024"
                     className="w-full px-3.5 py-2 rounded-xl bg-white/70 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white"
                   />
                 </div>
@@ -332,28 +455,28 @@ const AdminWorkshops = () => {
                     type="text"
                     value={formData.duration}
                     onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                    placeholder="e.g. 1 Week / 3 Days"
+                    placeholder="e.g. 1 Week / 3 Days / Full Day"
                     className="w-full px-3.5 py-2 rounded-xl bg-white/70 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="font-semibold text-slate-700 dark:text-slate-300">Institution / Host *</label>
+                <label className="font-semibold text-slate-700 dark:text-slate-300">Institution / Host Organization *</label>
                 <input
                   type="text"
                   value={formData.institution}
                   onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
                   required
-                  placeholder="e.g. Maharashtra Institute of Technology / Dr. BAMU / IIT Bombay"
+                  placeholder="e.g. Maharashtra Institute of Technology, Chhatrapati Sambhajinagar"
                   className="w-full px-3.5 py-2 rounded-xl bg-white/70 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white"
                 />
               </div>
 
-              {/* DUAL EVENT POSTER/PHOTO UPLOAD + OPTIONAL URL */}
+              {/* EVENT POSTER/PHOTO UPLOAD + OPTIONAL URL */}
               <div className="p-4 rounded-2xl bg-slate-50/60 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 space-y-3">
                 <span className="text-[11px] font-bold text-academic-600 dark:text-academic-400 uppercase tracking-wider block">
-                  Event Poster / Photo Upload & URL (Optional)
+                  Event Poster / Certificate Upload & URL (Optional)
                 </span>
 
                 <div>
@@ -361,7 +484,7 @@ const AdminWorkshops = () => {
                     type="file"
                     ref={fileInputRef}
                     onChange={handleFileUpload}
-                    accept=".pdf,.doc,.docx,image/*"
+                    accept=".pdf,.doc,.docx,.ppt,.pptx,image/*"
                     className="hidden"
                   />
                   <button
@@ -373,12 +496,12 @@ const AdminWorkshops = () => {
                     {uploading ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Uploading Event Poster/File...</span>
+                        <span>Uploading Event Poster...</span>
                       </>
                     ) : (
                       <>
                         <Upload className="w-4 h-4" />
-                        <span>Upload Event Poster / Certificate from Computer</span>
+                        <span>Upload Poster / Certificate from Computer</span>
                       </>
                     )}
                   </button>
@@ -412,7 +535,8 @@ const AdminWorkshops = () => {
                     <button
                       type="button"
                       onClick={() => setFormData(prev => ({ ...prev, posterUrl: '' }))}
-                      className="p-1 rounded-full text-slate-400 hover:text-rose-500"
+                      className="p-1 rounded-full text-slate-400 hover:text-rose-500 cursor-pointer"
+                      title="Remove attachment"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -421,12 +545,12 @@ const AdminWorkshops = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="font-semibold text-slate-700 dark:text-slate-300">Description</label>
+                <label className="font-semibold text-slate-700 dark:text-slate-300">Description / Highlights</label>
                 <textarea
                   rows={2}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Details regarding attendees, topics, and sessions..."
+                  placeholder="Details regarding attendees, topics, practical sessions, and sponsorship..."
                   className="w-full px-3.5 py-2 rounded-xl bg-white/70 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white resize-none"
                 />
               </div>
@@ -437,10 +561,10 @@ const AdminWorkshops = () => {
                   id="wkpPublish"
                   checked={formData.isPublished}
                   onChange={(e) => setFormData({ ...formData, isPublished: e.target.checked })}
-                  className="w-4 h-4 text-emerald-600 rounded"
+                  className="w-4 h-4 text-emerald-600 rounded cursor-pointer"
                 />
                 <label htmlFor="wkpPublish" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
-                  Publish to live website
+                  Publish to public website immediately
                 </label>
               </div>
 
@@ -454,7 +578,7 @@ const AdminWorkshops = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl mac-btn-primary text-white font-semibold shadow-md cursor-pointer"
+                  className="px-5 py-2 rounded-xl mac-btn-primary text-white font-semibold shadow-md cursor-pointer hover:opacity-95"
                 >
                   {editingItem ? 'Save Changes' : 'Save Workshop'}
                 </button>
@@ -469,4 +593,3 @@ const AdminWorkshops = () => {
 };
 
 export default AdminWorkshops;
-

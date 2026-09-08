@@ -105,7 +105,7 @@ const buildQuery = (id) => {
   if (mongoose.Types.ObjectId.isValid(strId) && String(new mongoose.Types.ObjectId(strId)) === strId) {
     return { _id: new mongoose.Types.ObjectId(strId) };
   }
-  return { $or: [{ _id: strId }, { id: strId }] };
+  return { id: strId };
 };
 
 const formatDoc = (doc) => {

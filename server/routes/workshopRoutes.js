@@ -18,19 +18,19 @@ router.get('/', async (req, res) => {
 router.post('/', requireAuth, async (req, res) => {
   try {
     const { title, role, type, date, duration, institution, description, posterUrl, certificateUrl, isPublished } = req.body;
-    if (!title || !date || !institution) {
-      return res.status(400).json({ success: false, message: 'Please provide title, date, and institution.' });
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, message: 'Please provide workshop or event title.' });
     }
     const workshop = await store.createWorkshop({
-      title,
+      title: title.trim(),
       role: role || 'Organized / Convener',
       type: type || 'FDP',
-      date,
+      date: date && date.trim() ? date.trim() : new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
       duration: duration || '1 Week',
-      institution,
-      description,
-      posterUrl,
-      certificateUrl,
+      institution: institution && institution.trim() ? institution.trim() : 'Maharashtra Institute of Technology, Chhatrapati Sambhajinagar',
+      description: description || '',
+      posterUrl: posterUrl || '',
+      certificateUrl: certificateUrl || '',
       isPublished: isPublished !== undefined ? Boolean(isPublished) : true
     });
     return res.status(201).json({ success: true, message: 'Workshop/FDP created successfully', data: workshop });
@@ -42,7 +42,10 @@ router.post('/', requireAuth, async (req, res) => {
 // PUT /api/workshops/:id (Protected)
 router.put('/:id', requireAuth, async (req, res) => {
   try {
-    const updated = await store.updateWorkshop(req.params.id, req.body);
+    const updates = { ...req.body };
+    if (updates.title) updates.title = updates.title.trim();
+    if (updates.institution) updates.institution = updates.institution.trim();
+    const updated = await store.updateWorkshop(req.params.id, updates);
     if (!updated) {
       return res.status(404).json({ success: false, message: 'Workshop/FDP not found' });
     }
