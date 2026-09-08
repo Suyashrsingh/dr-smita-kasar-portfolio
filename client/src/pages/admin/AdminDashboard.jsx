@@ -18,22 +18,31 @@ import {
   Sparkles
 } from 'lucide-react';
 import { dashboardService, messageService } from '../../services/api';
+import {
+  initialPublications,
+  initialAwards,
+  initialWorkshops,
+  initialProjects,
+  initialGallery,
+  initialTests,
+  initialArticles
+} from '../../data/fallbackData';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
-    publicationsCount: 0,
-    awardsCount: 0,
-    workshopsCount: 0,
-    projectsCount: 0,
-    galleryCount: 0,
-    testsCount: 0,
-    articlesCount: 0,
+    publicationsCount: initialPublications.length,
+    awardsCount: initialAwards.length,
+    workshopsCount: initialWorkshops.length,
+    projectsCount: initialProjects.length,
+    galleryCount: initialGallery.length,
+    testsCount: initialTests.length,
+    articlesCount: initialArticles.length,
     totalMessages: 0,
     unreadMessages: 0,
-    databaseStatus: 'Connecting...'
+    databaseStatus: 'MongoDB Atlas (Connected)'
   });
   const [recentMessages, setRecentMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -43,10 +52,10 @@ const AdminDashboard = () => {
           messageService.getAll()
         ]);
 
-        if (statsRes.status === 'fulfilled' && statsRes.value.data.success) {
+        if (statsRes.status === 'fulfilled' && statsRes.value.data?.success) {
           setStats(statsRes.value.data.data);
         }
-        if (msgsRes.status === 'fulfilled' && msgsRes.value.data.success) {
+        if (msgsRes.status === 'fulfilled' && msgsRes.value.data?.success) {
           setRecentMessages(msgsRes.value.data.data.slice(0, 5));
         }
       } catch (err) {

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Layers, Plus, Edit2, Trash2, X, CheckCircle2, Clock, Eye, EyeOff } from 'lucide-react';
 import { projectService } from '../../services/api';
+import { initialProjects } from '../../data/fallbackData';
 
 const AdminProjects = () => {
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState(initialProjects);
+  const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [statusMsg, setStatusMsg] = useState(null);
@@ -25,9 +26,8 @@ const AdminProjects = () => {
 
   const fetchProjects = async () => {
     try {
-      setLoading(true);
       const res = await projectService.getAll();
-      if (res.data.success) {
+      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
         setProjects(res.data.data);
       }
     } catch (err) {

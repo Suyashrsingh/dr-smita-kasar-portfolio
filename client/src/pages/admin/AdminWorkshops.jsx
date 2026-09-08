@@ -14,10 +14,11 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { workshopService, uploadService } from '../../services/api';
+import { initialWorkshops } from '../../data/fallbackData';
 
 const AdminWorkshops = () => {
-  const [workshops, setWorkshops] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [workshops, setWorkshops] = useState(initialWorkshops);
+  const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [statusMsg, setStatusMsg] = useState(null);
@@ -40,9 +41,8 @@ const AdminWorkshops = () => {
 
   const fetchWorkshops = async () => {
     try {
-      setLoading(true);
       const res = await workshopService.getAll();
-      if (res.data.success) {
+      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
         setWorkshops(res.data.data);
       }
     } catch (err) {

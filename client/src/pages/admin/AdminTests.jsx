@@ -23,10 +23,11 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { testService } from '../../services/api';
+import { initialTests } from '../../data/fallbackData';
 
 const AdminTests = () => {
-  const [tests, setTests] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [tests, setTests] = useState(initialTests);
+  const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTest, setEditingTest] = useState(null);
   const [statusMsg, setStatusMsg] = useState(null);

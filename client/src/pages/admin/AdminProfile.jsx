@@ -19,14 +19,20 @@ import {
   FileCheck
 } from 'lucide-react';
 import { profileService, uploadService } from '../../services/api';
+import { 
+  initialProfile, 
+  initialEducation, 
+  initialExperience, 
+  initialResearchAreas 
+} from '../../data/fallbackData';
 
 const AdminProfile = () => {
-  const [profile, setProfile] = useState(null);
-  const [education, setEducation] = useState([]);
-  const [experience, setExperience] = useState([]);
-  const [researchAreas, setResearchAreas] = useState([]);
+  const [profile, setProfile] = useState(initialProfile);
+  const [education, setEducation] = useState(initialEducation);
+  const [experience, setExperience] = useState(initialExperience);
+  const [researchAreas, setResearchAreas] = useState(initialResearchAreas);
   const [activeTab, setActiveTab] = useState('general'); // 'general', 'contact', 'metrics', 'education', 'experience', 'research'
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);

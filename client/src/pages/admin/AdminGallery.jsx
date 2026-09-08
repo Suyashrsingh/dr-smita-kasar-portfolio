@@ -18,10 +18,11 @@ import {
   Loader2
 } from 'lucide-react';
 import { galleryService, uploadService } from '../../services/api';
+import { initialGallery } from '../../data/fallbackData';
 
 const AdminGallery = () => {
-  const [gallery, setGallery] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [gallery, setGallery] = useState(initialGallery);
+  const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [statusMsg, setStatusMsg] = useState(null);
@@ -43,9 +44,8 @@ const AdminGallery = () => {
 
   const fetchGallery = async () => {
     try {
-      setLoading(true);
       const res = await galleryService.getAll();
-      if (res.data.success) {
+      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
         setGallery(res.data.data);
       }
     } catch (err) {

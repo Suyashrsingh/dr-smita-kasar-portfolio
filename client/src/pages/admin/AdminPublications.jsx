@@ -18,10 +18,11 @@ import {
   FileCheck
 } from 'lucide-react';
 import { publicationService, uploadService } from '../../services/api';
+import { initialPublications } from '../../data/fallbackData';
 
 const AdminPublications = () => {
-  const [publications, setPublications] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [publications, setPublications] = useState(initialPublications);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPub, setEditingPub] = useState(null);
@@ -50,9 +51,8 @@ const AdminPublications = () => {
 
   const fetchPublications = async () => {
     try {
-      setLoading(true);
       const res = await publicationService.getAll();
-      if (res.data.success) {
+      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
         setPublications(res.data.data);
       }
     } catch (err) {

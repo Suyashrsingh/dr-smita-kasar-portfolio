@@ -50,22 +50,54 @@ const formatDocs = (docs) => {
   return docs.map(formatDoc);
 };
 
+
+// High-Speed In-Memory Cache with 30s TTL
+const queryCache = {
+  data: new Map(),
+  get(key) {
+    const item = this.data.get(key);
+    if (item && Date.now() - item.time < 30000) {
+      return item.val;
+    }
+    return null;
+  },
+  set(key, val) {
+    this.data.set(key, { val, time: Date.now() });
+  },
+  invalidate(prefix) {
+    if (!prefix) {
+      this.data.clear();
+      return;
+    }
+    for (const key of this.data.keys()) {
+      if (key.startsWith(prefix) || key.startsWith('stats')) {
+        this.data.delete(key);
+      }
+    }
+  }
+};
+
 const isDbConnected = () => mongoose.connection.readyState === 1 || getStatus();
 
 const store = {
   // ==================== Profile ====================
   async getProfile() {
+    const cached = queryCache.get('profile');
+    if (cached) return cached;
     await ensureDb();
-    let p = await ProfileModel.findOne();
+    let p = await ProfileModel.findOne().lean();
     if (!p) {
       p = await ProfileModel.create(initialProfile);
     }
-    return formatDoc(p) || initialProfile;
+    const res = formatDoc(p) || initialProfile;
+    queryCache.set('profile', res);
+    return res;
   },
 
   async updateProfile(updates) {
     await ensureDb();
-    let p = await ProfileModel.findOneAndUpdate({}, { $set: updates }, { new: true, upsert: true });
+    let p = await ProfileModel.findOneAndUpdate({}, { $set: updates }, { new: true, upsert: true }).lean();
+    queryCache.invalidate('profile');
     return formatDoc(p);
   },
 
@@ -75,6 +107,9 @@ const store = {
 
   // ==================== Publications ====================
   async getPublications(query = {}, isAdmin = false) {
+    const cacheKey = 'pubs_' + isAdmin + '_' + JSON.stringify(query);
+    const cached = queryCache.get(cacheKey);
+    if (cached) return cached;
     await ensureDb();
     const filter = {};
     if (!isAdmin) filter.isPublished = { $ne: false };
@@ -87,20 +122,24 @@ const store = {
         { journal: { $regex: query.search, $options: 'i' } }
       ];
     }
-    const docs = await PublicationModel.find(filter).sort({ year: -1, createdAt: -1 });
-    return formatDocs(docs);
+    const docs = await PublicationModel.find(filter).sort({ year: -1, createdAt: -1 }).lean();
+    const res = formatDocs(docs);
+    queryCache.set(cacheKey, res);
+    return res;
   },
 
   async createPublication(data) {
     await ensureDb();
     const pubData = { isPublished: true, ...data };
     const created = await PublicationModel.create(pubData);
+    queryCache.invalidate('pubs');
     return formatDoc(created);
   },
 
   async updatePublication(id, updates) {
     await ensureDb();
-    const updated = await PublicationModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true });
+    const updated = await PublicationModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
+    queryCache.invalidate('pubs');
     return formatDoc(updated);
   },
 
@@ -110,33 +149,42 @@ const store = {
     if (!doc) return null;
     doc.isPublished = doc.isPublished === false ? true : false;
     await doc.save();
+    queryCache.invalidate('pubs');
     return formatDoc(doc);
   },
 
   async deletePublication(id) {
     await ensureDb();
     const res = await PublicationModel.deleteOne(buildQuery(id));
+    queryCache.invalidate('pubs');
     return res.deletedCount > 0;
   },
 
   // ==================== Awards ====================
   async getAwards(isAdmin = false) {
+    const cacheKey = 'awards_' + isAdmin;
+    const cached = queryCache.get(cacheKey);
+    if (cached) return cached;
     await ensureDb();
     const filter = isAdmin ? {} : { isPublished: { $ne: false } };
-    const docs = await AwardModel.find(filter).sort({ year: -1, createdAt: -1 });
-    return formatDocs(docs);
+    const docs = await AwardModel.find(filter).sort({ year: -1, createdAt: -1 }).lean();
+    const res = formatDocs(docs);
+    queryCache.set(cacheKey, res);
+    return res;
   },
 
   async createAward(data) {
     await ensureDb();
     const itemData = { isPublished: true, ...data };
     const created = await AwardModel.create(itemData);
+    queryCache.invalidate('awards');
     return formatDoc(created);
   },
 
   async updateAward(id, updates) {
     await ensureDb();
-    const updated = await AwardModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true });
+    const updated = await AwardModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
+    queryCache.invalidate('awards');
     return formatDoc(updated);
   },
 
@@ -152,27 +200,35 @@ const store = {
   async deleteAward(id) {
     await ensureDb();
     const res = await AwardModel.deleteOne(buildQuery(id));
+    queryCache.invalidate('awards');
     return res.deletedCount > 0;
   },
 
   // ==================== Workshops & FDPs ====================
   async getWorkshops(isAdmin = false) {
+    const cacheKey = 'workshops_' + isAdmin;
+    const cached = queryCache.get(cacheKey);
+    if (cached) return cached;
     await ensureDb();
     const filter = isAdmin ? {} : { isPublished: { $ne: false } };
-    const docs = await WorkshopModel.find(filter).sort({ createdAt: -1 });
-    return formatDocs(docs);
+    const docs = await WorkshopModel.find(filter).sort({ createdAt: -1 }).lean();
+    const res = formatDocs(docs);
+    queryCache.set(cacheKey, res);
+    return res;
   },
 
   async createWorkshop(data) {
     await ensureDb();
     const itemData = { isPublished: true, ...data };
     const created = await WorkshopModel.create(itemData);
+    queryCache.invalidate('workshops');
     return formatDoc(created);
   },
 
   async updateWorkshop(id, updates) {
     await ensureDb();
-    const updated = await WorkshopModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true });
+    const updated = await WorkshopModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
+    queryCache.invalidate('workshops');
     return formatDoc(updated);
   },
 
@@ -188,27 +244,35 @@ const store = {
   async deleteWorkshop(id) {
     await ensureDb();
     const res = await WorkshopModel.deleteOne(buildQuery(id));
+    queryCache.invalidate('workshops');
     return res.deletedCount > 0;
   },
 
   // ==================== Funded Projects ====================
   async getProjects(isAdmin = false) {
+    const cacheKey = 'projects_' + isAdmin;
+    const cached = queryCache.get(cacheKey);
+    if (cached) return cached;
     await ensureDb();
     const filter = isAdmin ? {} : { isPublished: { $ne: false } };
-    const docs = await ProjectModel.find(filter).sort({ createdAt: -1 });
-    return formatDocs(docs);
+    const docs = await ProjectModel.find(filter).sort({ createdAt: -1 }).lean();
+    const res = formatDocs(docs);
+    queryCache.set(cacheKey, res);
+    return res;
   },
 
   async createProject(data) {
     await ensureDb();
     const itemData = { isPublished: true, ...data };
     const created = await ProjectModel.create(itemData);
+    queryCache.invalidate('projects');
     return formatDoc(created);
   },
 
   async updateProject(id, updates) {
     await ensureDb();
-    const updated = await ProjectModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true });
+    const updated = await ProjectModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
+    queryCache.invalidate('projects');
     return formatDoc(updated);
   },
 
@@ -224,29 +288,37 @@ const store = {
   async deleteProject(id) {
     await ensureDb();
     const res = await ProjectModel.deleteOne(buildQuery(id));
+    queryCache.invalidate('projects');
     return res.deletedCount > 0;
   },
 
   // ==================== Photo Gallery ====================
   async getGallery(category, isAdmin = false) {
+    const cacheKey = 'gallery_' + isAdmin + '_' + (category || 'all');
+    const cached = queryCache.get(cacheKey);
+    if (cached) return cached;
     await ensureDb();
     const filter = {};
     if (!isAdmin) filter.isPublished = { $ne: false };
     if (category && category !== 'All') filter.category = category;
-    const docs = await GalleryModel.find(filter).sort({ createdAt: -1 });
-    return formatDocs(docs);
+    const docs = await GalleryModel.find(filter).sort({ createdAt: -1 }).lean();
+    const res = formatDocs(docs);
+    queryCache.set(cacheKey, res);
+    return res;
   },
 
   async createGalleryItem(data) {
     await ensureDb();
     const itemData = { isPublished: true, ...data };
     const created = await GalleryModel.create(itemData);
+    queryCache.invalidate('gallery');
     return formatDoc(created);
   },
 
   async updateGalleryItem(id, updates) {
     await ensureDb();
-    const updated = await GalleryModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true });
+    const updated = await GalleryModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
+    queryCache.invalidate('gallery');
     return formatDoc(updated);
   },
 
@@ -262,15 +334,21 @@ const store = {
   async deleteGalleryItem(id) {
     await ensureDb();
     const res = await GalleryModel.deleteOne(buildQuery(id));
+    queryCache.invalidate('gallery');
     return res.deletedCount > 0;
   },
 
   // ==================== Online Tests & Assessments ====================
   async getTests(isAdmin = false) {
+    const cacheKey = 'tests_' + isAdmin;
+    const cached = queryCache.get(cacheKey);
+    if (cached) return cached;
     await ensureDb();
     const filter = isAdmin ? {} : { isPublished: { $ne: false } };
-    const docs = await TestModel.find(filter).sort({ createdAt: -1 });
-    return formatDocs(docs);
+    const docs = await TestModel.find(filter).sort({ createdAt: -1 }).lean();
+    const res = formatDocs(docs);
+    queryCache.set(cacheKey, res);
+    return res;
   },
 
   async getTestById(id) {
@@ -378,12 +456,17 @@ const store = {
 
   // ==================== Articles & Study Notes ====================
   async getArticles(category, isAdmin = false) {
+    const cacheKey = 'articles_' + isAdmin + '_' + (category || 'all');
+    const cached = queryCache.get(cacheKey);
+    if (cached) return cached;
     await ensureDb();
     const filter = {};
     if (!isAdmin) filter.isPublished = { $ne: false };
     if (category && category !== 'All') filter.category = category;
-    const docs = await ArticleModel.find(filter).sort({ createdAt: -1 });
-    return formatDocs(docs);
+    const docs = await ArticleModel.find(filter).sort({ createdAt: -1 }).lean();
+    const res = formatDocs(docs);
+    queryCache.set(cacheKey, res);
+    return res;
   },
 
   async createArticle(data) {
@@ -441,6 +524,8 @@ const store = {
 
   // ==================== Dashboard Stats ====================
   async getDashboardStats() {
+    const cached = queryCache.get('stats');
+    if (cached) return cached;
     await ensureDb();
     const [
       publicationsCount,
@@ -464,7 +549,7 @@ const store = {
       MessageModel.countDocuments({ isRead: false })
     ]);
 
-    return {
+    const res = {
       publicationsCount,
       awardsCount,
       workshopsCount,
@@ -476,6 +561,8 @@ const store = {
       unreadMessages,
       databaseStatus: isDbConnected() ? 'MongoDB Atlas (Connected)' : 'Disconnected'
     };
+    queryCache.set('stats', res);
+    return res;
   }
 };
 
