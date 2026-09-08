@@ -145,13 +145,26 @@ router.post('/', requireAuth, async (req, res) => {
     } = req.body;
 
     if (!title || !subject) {
-      return res.status(400).json({ success: false, message: 'Please provide title and subject.' });
+      return res.status(400).json({ success: false, message: 'Please provide test title and subject.' });
     }
+
+    const cleanQuestions = Array.isArray(questions) ? questions.map(q => {
+      const opts = Array.isArray(q.options) 
+        ? q.options.map(o => String(o || '').trim()).filter(Boolean)
+        : [];
+      return {
+        question: String(q.question || '').trim(),
+        options: opts.length >= 2 ? opts : (opts.length === 1 ? [...opts, 'N/A'] : ['Option A', 'Option B']),
+        correctAnswer: Number(q.correctAnswer) || 0,
+        explanation: String(q.explanation || '').trim(),
+        marks: Number(q.marks) || 1
+      };
+    }).filter(q => q.question) : [];
 
     const created = await store.createTest({
       title,
       subject,
-      description,
+      description: description || '',
       targetAudience: targetAudience || 'UG / PG Scholars',
       durationMinutes: Number(durationMinutes) || 15,
       passMarks: Number(passMarks) || 3,
@@ -160,7 +173,7 @@ router.post('/', requireAuth, async (req, res) => {
       startTime: startTime ? new Date(startTime) : null,
       endTime: endTime ? new Date(endTime) : null,
       targetClass: targetClass || 'All Classes / CSE',
-      questions: questions || []
+      questions: cleanQuestions
     });
     return res.status(201).json({ success: true, message: 'Test assessment created successfully', data: created });
   } catch (error) {
@@ -171,7 +184,22 @@ router.post('/', requireAuth, async (req, res) => {
 // PUT /api/tests/:id (Protected: Admin edit test)
 router.put('/:id', requireAuth, async (req, res) => {
   try {
-    const updated = await store.updateTest(req.params.id, req.body);
+    const updates = { ...req.body };
+    if (updates.questions && Array.isArray(updates.questions)) {
+      updates.questions = updates.questions.map(q => {
+        const opts = Array.isArray(q.options) 
+          ? q.options.map(o => String(o || '').trim()).filter(Boolean)
+          : [];
+        return {
+          question: String(q.question || '').trim(),
+          options: opts.length >= 2 ? opts : (opts.length === 1 ? [...opts, 'N/A'] : ['Option A', 'Option B']),
+          correctAnswer: Number(q.correctAnswer) || 0,
+          explanation: String(q.explanation || '').trim(),
+          marks: Number(q.marks) || 1
+        };
+      }).filter(q => q.question);
+    }
+    const updated = await store.updateTest(req.params.id, updates);
     if (!updated) return res.status(404).json({ success: false, message: 'Test not found' });
     return res.json({ success: true, message: 'Test updated successfully', data: updated });
   } catch (error) {

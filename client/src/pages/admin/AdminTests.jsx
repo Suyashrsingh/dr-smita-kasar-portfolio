@@ -255,8 +255,23 @@ const AdminTests = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Clean and sanitize questions before submitting
+      const cleanQuestions = (formData.questions || [])
+        .map(q => {
+          const opts = (q.options || []).map(o => String(o || '').trim()).filter(Boolean);
+          return {
+            question: String(q.question || '').trim(),
+            options: opts.length >= 2 ? opts : (opts.length === 1 ? [...opts, 'N/A'] : ['Option A', 'Option B']),
+            correctAnswer: Math.min(Math.max(0, Number(q.correctAnswer) || 0), Math.max(0, (opts.length || 2) - 1)),
+            explanation: String(q.explanation || '').trim(),
+            marks: Number(q.marks) || 1
+          };
+        })
+        .filter(q => q.question);
+
       const payload = {
         ...formData,
+        questions: cleanQuestions,
         startTime: formData.isScheduled && formData.startTime ? new Date(formData.startTime) : null,
         endTime: formData.isScheduled && formData.endTime ? new Date(formData.endTime) : null
       };
@@ -272,7 +287,8 @@ const AdminTests = () => {
       setModalOpen(false);
       fetchTests();
     } catch (err) {
-      setStatusMsg({ type: 'error', text: 'Error saving test.' });
+      const errMsg = err.response?.data?.message || err.message || 'Error saving test.';
+      setStatusMsg({ type: 'error', text: `Failed to save test: ${errMsg}` });
     }
   };
 
@@ -318,14 +334,37 @@ const AdminTests = () => {
       )}
 
       {/* Tests List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {tests.map((test) => {
-          const id = test.id || test._id;
-          return (
-            <div
-              key={id}
-              className="mac-card rounded-3xl p-6 space-y-4 flex flex-col justify-between shadow-sm hover:border-academic-500/50 transition-all"
-            >
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+          <Loader2 className="w-8 h-8 animate-spin text-academic-500 mb-3" />
+          <p className="text-sm font-medium">Loading assessments from database...</p>
+        </div>
+      ) : tests.length === 0 ? (
+        <div className="mac-card rounded-3xl p-12 text-center space-y-4 max-w-lg mx-auto">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-academic-500/10 text-academic-500 flex items-center justify-center">
+            <FileCheck className="w-7 h-7" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">No Assessments Created Yet</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Create online multiple-choice quizzes and timed assessments for your students to test their knowledge.
+          </p>
+          <button
+            onClick={openCreateModal}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold mac-btn-primary text-white shadow-md cursor-pointer hover:opacity-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create Your First Assessment</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {tests.map((test) => {
+            const id = test.id || test._id;
+            return (
+              <div
+                key={id}
+                className="mac-card rounded-3xl p-6 space-y-4 flex flex-col justify-between shadow-sm hover:border-academic-500/50 transition-all"
+              >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-academic-500/10 text-academic-700 dark:text-academic-300 border border-academic-500/20">
@@ -424,7 +463,8 @@ const AdminTests = () => {
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
 
       {/* STUDENT SUBMISSIONS MODAL & EXCEL EXPORT */}
       {submissionsModalOpen && selectedTestForSubs && (
@@ -793,7 +833,7 @@ const AdminTests = () => {
                             type="text"
                             value={opt}
                             onChange={(e) => handleOptionChange(qIdx, optIdx, e.target.value)}
-                            required
+                            required={optIdx < 2}
                             placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
                             className="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-navy-950 border border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white text-xs"
                           />

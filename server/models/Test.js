@@ -3,18 +3,20 @@ const mongoose = require('mongoose');
 const QuestionSchema = new mongoose.Schema({
   question: {
     type: String,
-    required: true,
+    default: '',
+    trim: true,
   },
   options: [{
     type: String,
-    required: true,
+    trim: true,
   }],
   correctAnswer: {
     type: Number, // 0-indexed index of option
-    required: true,
+    default: 0,
   },
   explanation: {
     type: String,
+    default: '',
   },
   marks: {
     type: Number,
