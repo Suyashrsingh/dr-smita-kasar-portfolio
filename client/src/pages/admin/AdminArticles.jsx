@@ -15,9 +15,27 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  FileCheck
+  FileCheck,
+  Presentation
 } from 'lucide-react';
 import { articleService, uploadService } from '../../services/api';
+
+const getDocBadge = (url, type, name) => {
+  const str = `${name || ''} ${url || ''} ${type || ''}`.toLowerCase();
+  if (str.includes('.pdf') || type === 'pdf') {
+    return { label: 'PDF Document', ext: 'PDF', bg: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30' };
+  }
+  if (str.includes('.ppt') || str.includes('.pptx') || type === 'pptx' || type === 'ppt') {
+    return { label: 'PowerPoint PPTX', ext: 'PPTX', bg: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30' };
+  }
+  if (str.includes('.doc') || str.includes('.docx') || type === 'docx' || type === 'doc') {
+    return { label: 'Word Document', ext: 'DOCX', bg: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30' };
+  }
+  if (str.includes('.txt') || type === 'txt') {
+    return { label: 'Text File', ext: 'TXT', bg: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' };
+  }
+  return { label: 'Academic File', ext: 'FILE', bg: 'bg-academic-500/15 text-academic-700 dark:text-academic-300 border-academic-500/30' };
+};
 
 const AdminArticles = () => {
   const [articles, setArticles] = useState([]);
@@ -34,6 +52,8 @@ const AdminArticles = () => {
     content: '',
     author: 'Dr. Smita Kasar',
     attachmentUrl: '',
+    attachmentName: '',
+    attachmentType: '',
     tagsString: 'Computer Science, AI, Lecture Notes',
     isPublished: true
   };
@@ -71,13 +91,15 @@ const AdminArticles = () => {
       content: art.content || '',
       author: art.author || 'Dr. Smita Kasar',
       attachmentUrl: art.attachmentUrl || '',
+      attachmentName: art.attachmentName || '',
+      attachmentType: art.attachmentType || '',
       tagsString: (art.tags || []).join(', '),
       isPublished: art.isPublished !== false
     });
     setModalOpen(true);
   };
 
-  // Direct file upload handler (PDF, DOC, PPTX, etc.)
+  // Direct file upload handler (PDF, DOC, PPTX, TXT, etc.)
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -87,8 +109,16 @@ const AdminArticles = () => {
     try {
       const res = await uploadService.uploadFile(file);
       if (res.data.success) {
-        setFormData(prev => ({ ...prev, attachmentUrl: res.data.data.url }));
-        setStatusMsg({ type: 'success', text: `Document "${file.name}" uploaded successfully!` });
+        const fileData = res.data.data;
+        const ext = file.name.split('.').pop()?.toLowerCase() || '';
+        const detectedType = fileData.format || ext;
+        setFormData(prev => ({ 
+          ...prev, 
+          attachmentUrl: fileData.url,
+          attachmentName: fileData.originalName || file.name,
+          attachmentType: detectedType
+        }));
+        setStatusMsg({ type: 'success', text: `Document "${file.name}" [${detectedType.toUpperCase()}] uploaded successfully!` });
       }
     } catch (err) {
       setStatusMsg({ type: 'error', text: 'Failed to upload document: ' + (err.response?.data?.message || err.message) });
@@ -126,12 +156,16 @@ const AdminArticles = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const url = formData.attachmentUrl.trim();
+      const detectedExt = url.split('.').pop()?.toLowerCase() || '';
       const payload = {
         title: formData.title,
         category: formData.category,
         content: formData.content,
         author: formData.author,
-        attachmentUrl: formData.attachmentUrl.trim(),
+        attachmentUrl: url,
+        attachmentName: formData.attachmentName || (url ? url.split('/').pop() : ''),
+        attachmentType: formData.attachmentType || detectedExt,
         tags: formData.tagsString.split(',').map(s => s.trim()).filter(Boolean),
         isPublished: formData.isPublished
       };
@@ -244,19 +278,27 @@ const AdminArticles = () => {
                     {art.content}
                   </p>
 
-                  {art.attachmentUrl && (
-                    <div className="pt-1">
-                      <a
-                        href={art.attachmentUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-semibold bg-white/60 dark:bg-white/10 text-academic-600 dark:text-academic-300 border border-academic-500/20 hover:border-academic-500"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Attached Material: {art.attachmentUrl.split('/').pop()}</span>
-                      </a>
-                    </div>
-                  )}
+                  {art.attachmentUrl && (() => {
+                    const badge = getDocBadge(art.attachmentUrl, art.attachmentType, art.attachmentName);
+                    return (
+                      <div className="pt-1 flex items-center gap-2 flex-wrap">
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${badge.bg}`}>
+                          {badge.ext}
+                        </span>
+                        <a
+                          href={art.attachmentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-semibold bg-white/60 dark:bg-white/10 text-academic-600 dark:text-academic-300 border border-academic-500/20 hover:border-academic-500"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span className="truncate max-w-[200px]">
+                            {art.attachmentName || art.attachmentUrl.split('/').pop()}
+                          </span>
+                        </a>
+                      </div>
+                    );
+                  })()}
 
                   <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono pt-1">
                     <span>{art.date}</span>
@@ -411,21 +453,29 @@ const AdminArticles = () => {
                 </div>
 
                 {/* Current Attachment Preview Badge */}
-                {formData.attachmentUrl && (
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-academic-500/10 border border-academic-500/20 text-[11px] text-academic-700 dark:text-academic-300">
-                    <div className="flex items-center gap-2 truncate">
-                      <FileCheck className="w-4 h-4 shrink-0 text-academic-600" />
-                      <span className="font-mono truncate">{formData.attachmentUrl}</span>
+                {formData.attachmentUrl && (() => {
+                  const badge = getDocBadge(formData.attachmentUrl, formData.attachmentType, formData.attachmentName);
+                  return (
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-academic-500/10 border border-academic-500/20 text-[11px] text-academic-700 dark:text-academic-300">
+                      <div className="flex items-center gap-2 truncate">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border shrink-0 ${badge.bg}`}>
+                          {badge.ext}
+                        </span>
+                        <span className="font-semibold truncate">
+                          {formData.attachmentName || formData.attachmentUrl.split('/').pop()}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, attachmentUrl: '', attachmentName: '', attachmentType: '' }))}
+                        className="p-1 rounded-full text-slate-400 hover:text-rose-500"
+                        title="Remove attachment"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, attachmentUrl: '' }))}
-                      className="p-1 rounded-full text-slate-400 hover:text-rose-500"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
 
               <div className="space-y-1">

@@ -39,7 +39,9 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// Static uploads directory
+// Dynamic & GridFS file streaming for '/uploads' with local static fallback
+const { streamFile } = require('./services/fileStorage');
+app.get('/uploads/:filename', (req, res) => streamFile(req, res, req.params.filename));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Core API Router definition
@@ -74,6 +76,7 @@ apiRouter.use('/articles', require('./routes/articleRoutes'));
 apiRouter.use('/messages', require('./routes/messageRoutes'));
 apiRouter.use('/dashboard', require('./routes/dashboardRoutes'));
 apiRouter.use('/upload', require('./routes/uploadRoutes'));
+apiRouter.get('/files/:filename', (req, res) => streamFile(req, res, req.params.filename));
 
 // Mount on BOTH '/api' and '/' to seamlessly support Vercel serverless function invocations
 app.use('/api', apiRouter);

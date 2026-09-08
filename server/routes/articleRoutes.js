@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
 // POST /api/articles (Protected: Admin create article/notice)
 router.post('/', requireAuth, async (req, res) => {
   try {
-    const { title, category, content, author, attachmentUrl, tags, isPublished } = req.body;
+    const { title, category, content, author, attachmentUrl, attachmentName, attachmentType, tags, isPublished } = req.body;
     if (!title || !content) {
       return res.status(400).json({ success: false, message: 'Please provide title and content.' });
     }
@@ -28,6 +28,8 @@ router.post('/', requireAuth, async (req, res) => {
       content,
       author: author || 'Dr. Smita Kasar',
       attachmentUrl,
+      attachmentName,
+      attachmentType,
       tags: tags || [],
       isPublished: isPublished !== undefined ? Boolean(isPublished) : true
     });

@@ -26,6 +26,14 @@ const ArticleSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  attachmentName: {
+    type: String,
+    trim: true,
+  },
+  attachmentType: {
+    type: String,
+    trim: true,
+  },
   tags: [String],
   isPublished: {
     type: Boolean,
