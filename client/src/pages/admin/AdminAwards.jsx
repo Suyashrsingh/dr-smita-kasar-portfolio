@@ -45,7 +45,7 @@ const AdminAwards = () => {
   const fetchAwards = async () => {
     try {
       const res = await awardService.getAll();
-      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+      if (res.data?.success && Array.isArray(res.data.data)) {
         setAwards(res.data.data);
       }
     } catch (err) {
@@ -112,12 +112,14 @@ const AdminAwards = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this award?')) return;
+    setAwards(prev => prev.filter(a => (a.id || a._id) !== id));
     try {
       await awardService.delete(id);
       setStatusMsg({ type: 'success', text: 'Award deleted.' });
       fetchAwards();
     } catch (err) {
       setStatusMsg({ type: 'error', text: 'Failed to delete award.' });
+      fetchAwards();
     }
   };
 

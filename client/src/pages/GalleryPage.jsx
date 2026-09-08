@@ -20,7 +20,7 @@ const GalleryPage = () => {
       galleryService.getAll(),
       profileService.getProfile()
     ]).then(([galRes, profRes]) => {
-      if (galRes.status === 'fulfilled' && Array.isArray(galRes.value.data?.data) && galRes.value.data.data.length > 0) {
+      if (galRes.status === 'fulfilled' && Array.isArray(galRes.value.data?.data)) {
         setGallery(galRes.value.data.data);
       }
       if (profRes.status === 'fulfilled' && profRes.value.data?.data?.profile) {

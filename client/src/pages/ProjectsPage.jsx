@@ -20,7 +20,7 @@ const ProjectsPage = () => {
       projectService.getAll(),
       profileService.getProfile()
     ]).then(([prjRes, profRes]) => {
-      if (prjRes.status === 'fulfilled' && Array.isArray(prjRes.value.data?.data) && prjRes.value.data.data.length > 0) {
+      if (prjRes.status === 'fulfilled' && Array.isArray(prjRes.value.data?.data)) {
         setProjects(prjRes.value.data.data);
       }
       if (profRes.status === 'fulfilled' && profRes.value.data?.data?.profile) {

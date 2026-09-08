@@ -20,7 +20,7 @@ const WorkshopsPage = () => {
       workshopService.getAll(),
       profileService.getProfile()
     ]).then(([wkpRes, profRes]) => {
-      if (wkpRes.status === 'fulfilled' && Array.isArray(wkpRes.value.data?.data) && wkpRes.value.data.data.length > 0) {
+      if (wkpRes.status === 'fulfilled' && Array.isArray(wkpRes.value.data?.data)) {
         setWorkshops(wkpRes.value.data.data);
       }
       if (profRes.status === 'fulfilled' && profRes.value.data?.data?.profile) {

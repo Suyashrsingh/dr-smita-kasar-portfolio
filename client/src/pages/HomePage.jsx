@@ -91,13 +91,13 @@ const HomePage = () => {
           education: (profData?.education && profData.education.length > 0) ? profData.education : prev.education,
           experience: (profData?.experience && profData.experience.length > 0) ? profData.experience : prev.experience,
           researchAreas: (profData?.researchAreas && profData.researchAreas.length > 0) ? profData.researchAreas : prev.researchAreas,
-          publications: (pubRes.status === 'fulfilled' && Array.isArray(pubRes.value.data?.data) && pubRes.value.data.data.length > 0) ? pubRes.value.data.data : prev.publications,
-          awards: (awdRes.status === 'fulfilled' && Array.isArray(awdRes.value.data?.data) && awdRes.value.data.data.length > 0) ? awdRes.value.data.data : prev.awards,
-          workshops: (wkpRes.status === 'fulfilled' && Array.isArray(wkpRes.value.data?.data) && wkpRes.value.data.data.length > 0) ? wkpRes.value.data.data : prev.workshops,
-          projects: (prjRes.status === 'fulfilled' && Array.isArray(prjRes.value.data?.data) && prjRes.value.data.data.length > 0) ? prjRes.value.data.data : prev.projects,
-          gallery: (galRes.status === 'fulfilled' && Array.isArray(galRes.value.data?.data) && galRes.value.data.data.length > 0) ? galRes.value.data.data : prev.gallery,
-          tests: (tstRes.status === 'fulfilled' && Array.isArray(tstRes.value.data?.data) && tstRes.value.data.data.length > 0) ? tstRes.value.data.data : prev.tests,
-          articles: (artRes.status === 'fulfilled' && Array.isArray(artRes.value.data?.data) && artRes.value.data.data.length > 0) ? artRes.value.data.data : prev.articles
+          publications: (pubRes.status === 'fulfilled' && Array.isArray(pubRes.value.data?.data)) ? pubRes.value.data.data : prev.publications,
+          awards: (awdRes.status === 'fulfilled' && Array.isArray(awdRes.value.data?.data)) ? awdRes.value.data.data : prev.awards,
+          workshops: (wkpRes.status === 'fulfilled' && Array.isArray(wkpRes.value.data?.data)) ? wkpRes.value.data.data : prev.workshops,
+          projects: (prjRes.status === 'fulfilled' && Array.isArray(prjRes.value.data?.data)) ? prjRes.value.data.data : prev.projects,
+          gallery: (galRes.status === 'fulfilled' && Array.isArray(galRes.value.data?.data)) ? galRes.value.data.data : prev.gallery,
+          tests: (tstRes.status === 'fulfilled' && Array.isArray(tstRes.value.data?.data)) ? tstRes.value.data.data : prev.tests,
+          articles: (artRes.status === 'fulfilled' && Array.isArray(artRes.value.data?.data)) ? artRes.value.data.data : prev.articles
         }));
       } catch (err) {
         console.error('Failed to load portfolio data:', err);

@@ -119,12 +119,14 @@ const AdminTests = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this test assessment?')) return;
+    setTests(prev => prev.filter(t => (t.id || t._id) !== id));
     try {
       await testService.delete(id);
       setStatusMsg({ type: 'success', text: 'Test deleted successfully.' });
       fetchTests();
     } catch (err) {
       setStatusMsg({ type: 'error', text: 'Failed to delete test.' });
+      fetchTests();
     }
   };
 

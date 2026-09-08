@@ -27,7 +27,7 @@ const AdminProjects = () => {
   const fetchProjects = async () => {
     try {
       const res = await projectService.getAll();
-      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+      if (res.data?.success && Array.isArray(res.data.data)) {
         setProjects(res.data.data);
       }
     } catch (err) {
@@ -75,12 +75,14 @@ const AdminProjects = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this project?')) return;
+    setProjects(prev => prev.filter(p => (p.id || p._id) !== id));
     try {
       await projectService.delete(id);
       setStatusMsg({ type: 'success', text: 'Project deleted successfully.' });
       fetchProjects();
     } catch (err) {
       setStatusMsg({ type: 'error', text: 'Failed to delete project.' });
+      fetchProjects();
     }
   };
 

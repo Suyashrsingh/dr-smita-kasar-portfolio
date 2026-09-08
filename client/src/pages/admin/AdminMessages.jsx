@@ -36,12 +36,14 @@ const AdminMessages = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this message?')) return;
+    setMessages(prev => prev.filter(m => (m.id || m._id) !== id));
     try {
       await messageService.delete(id);
       setStatusMsg({ type: 'success', text: 'Message deleted successfully.' });
       fetchMessages();
     } catch (err) {
       setStatusMsg({ type: 'error', text: 'Failed to delete message.' });
+      fetchMessages();
     }
   };
 

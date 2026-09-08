@@ -52,7 +52,7 @@ const AdminPublications = () => {
   const fetchPublications = async () => {
     try {
       const res = await publicationService.getAll();
-      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+      if (res.data?.success && Array.isArray(res.data.data)) {
         setPublications(res.data.data);
       }
     } catch (err) {
@@ -124,12 +124,14 @@ const AdminPublications = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this publication?')) return;
+    setPublications(prev => prev.filter(p => (p.id || p._id) !== id));
     try {
       await publicationService.delete(id);
       setStatusMsg({ type: 'success', text: 'Publication deleted successfully.' });
       fetchPublications();
     } catch (err) {
       setStatusMsg({ type: 'error', text: 'Failed to delete publication.' });
+      fetchPublications();
     }
   };
 

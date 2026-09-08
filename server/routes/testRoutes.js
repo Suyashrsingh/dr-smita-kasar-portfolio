@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
 // GET /api/tests/submissions/all (Protected: Admin view all quiz submissions)
 router.get('/submissions/all', requireAuth, async (req, res) => {
   try {
-    const submissions = await store.getTestSubmissions();
+    const submissions = await store.getAllTestSubmissions();
     return res.json({ success: true, count: submissions.length, data: submissions });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

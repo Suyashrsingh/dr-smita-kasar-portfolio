@@ -45,7 +45,7 @@ const AdminGallery = () => {
   const fetchGallery = async () => {
     try {
       const res = await galleryService.getAll();
-      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+      if (res.data?.success && Array.isArray(res.data.data)) {
         setGallery(res.data.data);
       }
     } catch (err) {
@@ -112,12 +112,14 @@ const AdminGallery = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this photo from the gallery?')) return;
+    setGallery(prev => prev.filter(g => (g.id || g._id) !== id));
     try {
       const res = await galleryService.delete(id);
-      setStatusMsg({ type: 'success', text: res.data.message });
+      setStatusMsg({ type: 'success', text: res.data.message || 'Photo deleted successfully.' });
       fetchGallery();
     } catch (err) {
       setStatusMsg({ type: 'error', text: 'Failed to delete gallery photo.' });
+      fetchGallery();
     }
   };
 

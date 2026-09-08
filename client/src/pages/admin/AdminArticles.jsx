@@ -44,7 +44,7 @@ const AdminArticles = () => {
   const fetchArticles = async () => {
     try {
       const res = await articleService.getAll();
-      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+      if (res.data?.success && Array.isArray(res.data.data)) {
         setArticles(res.data.data);
       }
     } catch (err) {
@@ -110,12 +110,14 @@ const AdminArticles = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this notice or lecture note?')) return;
+    setArticles(prev => prev.filter(a => (a.id || a._id) !== id));
     try {
       await articleService.delete(id);
       setStatusMsg({ type: 'success', text: 'Item deleted successfully.' });
       fetchArticles();
     } catch (err) {
       setStatusMsg({ type: 'error', text: 'Failed to delete.' });
+      fetchArticles();
     }
   };
 

@@ -27,10 +27,65 @@ const TestModel = require('../models/Test');
 const TestSubmissionModel = require('../models/TestSubmission');
 const ArticleModel = require('../models/Article');
 
+let isSeeding = false;
+const autoSeedIfEmpty = async () => {
+  if (mongoose.connection.readyState !== 1 || isSeeding) return;
+  isSeeding = true;
+  try {
+    const pubCount = await PublicationModel.countDocuments();
+    if (pubCount === 0 && initialPublications && initialPublications.length > 0) {
+      console.log('🌱 [MongoDB Atlas] Auto-seeding publications...');
+      await PublicationModel.insertMany(initialPublications.map(({ id, _id, ...rest }) => rest));
+    }
+    const awdCount = await AwardModel.countDocuments();
+    if (awdCount === 0 && initialAwards && initialAwards.length > 0) {
+      console.log('🌱 [MongoDB Atlas] Auto-seeding awards...');
+      await AwardModel.insertMany(initialAwards.map(({ id, _id, ...rest }) => rest));
+    }
+    const wkpCount = await WorkshopModel.countDocuments();
+    if (wkpCount === 0 && initialWorkshops && initialWorkshops.length > 0) {
+      console.log('🌱 [MongoDB Atlas] Auto-seeding workshops...');
+      await WorkshopModel.insertMany(initialWorkshops.map(({ id, _id, ...rest }) => rest));
+    }
+    const prjCount = await ProjectModel.countDocuments();
+    if (prjCount === 0 && initialProjects && initialProjects.length > 0) {
+      console.log('🌱 [MongoDB Atlas] Auto-seeding projects...');
+      await ProjectModel.insertMany(initialProjects.map(({ id, _id, ...rest }) => rest));
+    }
+    const galCount = await GalleryModel.countDocuments();
+    if (galCount === 0 && initialGallery && initialGallery.length > 0) {
+      console.log('🌱 [MongoDB Atlas] Auto-seeding gallery...');
+      await GalleryModel.insertMany(initialGallery.map(({ id, _id, ...rest }) => rest));
+    }
+    const artCount = await ArticleModel.countDocuments();
+    if (artCount === 0 && initialArticles && initialArticles.length > 0) {
+      console.log('🌱 [MongoDB Atlas] Auto-seeding articles...');
+      await ArticleModel.insertMany(initialArticles.map(({ id, _id, ...rest }) => rest));
+    }
+    const tstCount = await TestModel.countDocuments();
+    if (tstCount === 0 && initialTests && initialTests.length > 0) {
+      console.log('🌱 [MongoDB Atlas] Auto-seeding tests...');
+      await TestModel.insertMany(initialTests.map(({ id, _id, ...rest }) => rest));
+    }
+    const profCount = await ProfileModel.countDocuments();
+    if (profCount === 0 && initialProfile) {
+      console.log('🌱 [MongoDB Atlas] Auto-seeding profile...');
+      await ProfileModel.create(initialProfile);
+    }
+  } catch (err) {
+    console.warn('⚠️ [MongoDB Atlas] Auto-seed notice:', err.message);
+  } finally {
+    isSeeding = false;
+  }
+};
+
 const ensureDb = async () => {
   if (mongoose.connection.readyState !== 1) {
     try {
       await connectDB();
+      if (mongoose.connection.readyState === 1) {
+        await autoSeedIfEmpty();
+      }
     } catch (err) {
       // Silent error; fallback data will be used
     }
@@ -39,12 +94,12 @@ const ensureDb = async () => {
 
 const buildQuery = (id) => {
   if (!id) return { _id: null };
-  const clauses = [];
-  if (mongoose.Types.ObjectId.isValid(id)) {
-    clauses.push({ _id: new mongoose.Types.ObjectId(id) });
+  if (id instanceof mongoose.Types.ObjectId) return { _id: id };
+  const strId = String(id).trim();
+  if (mongoose.Types.ObjectId.isValid(strId) && String(new mongoose.Types.ObjectId(strId)) === strId) {
+    return { _id: new mongoose.Types.ObjectId(strId) };
   }
-  clauses.push({ id: id });
-  return clauses.length === 1 ? clauses[0] : { $or: clauses };
+  return { $or: [{ _id: strId }, { id: strId }] };
 };
 
 const formatDoc = (doc) => {
@@ -150,7 +205,7 @@ const store = {
         ];
       }
       const docs = await PublicationModel.find(filter).sort({ year: -1, createdAt: -1 }).lean();
-      const res = (docs && docs.length > 0) ? formatDocs(docs) : initialPublications;
+      const res = formatDocs(docs);
       queryCache.set(cacheKey, res);
       return res;
     } catch (e) {
@@ -168,19 +223,18 @@ const store = {
     }
     const pubData = { isPublished: true, ...data };
     const created = await PublicationModel.create(pubData);
-    return formatDoc(created);
+    const formatted = formatDoc(created);
+    initialPublications.unshift(formatted);
+    return formatted;
   },
 
   async updatePublication(id, updates) {
     await ensureDb();
     queryCache.invalidate('pubs');
+    const idx = initialPublications.findIndex(p => p.id === id || p._id === id);
+    if (idx !== -1) Object.assign(initialPublications[idx], updates);
     if (mongoose.connection.readyState !== 1) {
-      const idx = initialPublications.findIndex(p => p.id === id || p._id === id);
-      if (idx !== -1) {
-        Object.assign(initialPublications[idx], updates);
-        return initialPublications[idx];
-      }
-      return null;
+      return idx !== -1 ? initialPublications[idx] : null;
     }
     const updated = await PublicationModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     return formatDoc(updated);
@@ -189,13 +243,12 @@ const store = {
   async togglePublishPublication(id) {
     await ensureDb();
     queryCache.invalidate('pubs');
+    const idx = initialPublications.findIndex(p => p.id === id || p._id === id);
+    if (idx !== -1) {
+      initialPublications[idx].isPublished = initialPublications[idx].isPublished === false ? true : false;
+    }
     if (mongoose.connection.readyState !== 1) {
-      const item = initialPublications.find(p => p.id === id || p._id === id);
-      if (item) {
-        item.isPublished = item.isPublished === false ? true : false;
-        return item;
-      }
-      return null;
+      return idx !== -1 ? initialPublications[idx] : null;
     }
     const doc = await PublicationModel.findOne(buildQuery(id));
     if (!doc) return null;
@@ -207,13 +260,10 @@ const store = {
   async deletePublication(id) {
     await ensureDb();
     queryCache.invalidate('pubs');
+    const idx = initialPublications.findIndex(p => p.id === id || p._id === id);
+    if (idx !== -1) initialPublications.splice(idx, 1);
     if (mongoose.connection.readyState !== 1) {
-      const idx = initialPublications.findIndex(p => p.id === id || p._id === id);
-      if (idx !== -1) {
-        initialPublications.splice(idx, 1);
-        return true;
-      }
-      return false;
+      return idx !== -1;
     }
     const res = await PublicationModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;
@@ -231,7 +281,7 @@ const store = {
     try {
       const filter = isAdmin ? {} : { isPublished: { $ne: false } };
       const docs = await AwardModel.find(filter).sort({ year: -1, createdAt: -1 }).lean();
-      const res = (docs && docs.length > 0) ? formatDocs(docs) : initialAwards;
+      const res = formatDocs(docs);
       queryCache.set(cacheKey, res);
       return res;
     } catch (e) {
@@ -249,19 +299,18 @@ const store = {
     }
     const itemData = { isPublished: true, ...data };
     const created = await AwardModel.create(itemData);
-    return formatDoc(created);
+    const formatted = formatDoc(created);
+    initialAwards.unshift(formatted);
+    return formatted;
   },
 
   async updateAward(id, updates) {
     await ensureDb();
     queryCache.invalidate('awards');
+    const idx = initialAwards.findIndex(a => a.id === id || a._id === id);
+    if (idx !== -1) Object.assign(initialAwards[idx], updates);
     if (mongoose.connection.readyState !== 1) {
-      const idx = initialAwards.findIndex(a => a.id === id || a._id === id);
-      if (idx !== -1) {
-        Object.assign(initialAwards[idx], updates);
-        return initialAwards[idx];
-      }
-      return null;
+      return idx !== -1 ? initialAwards[idx] : null;
     }
     const updated = await AwardModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     return formatDoc(updated);
@@ -270,13 +319,12 @@ const store = {
   async togglePublishAward(id) {
     await ensureDb();
     queryCache.invalidate('awards');
+    const idx = initialAwards.findIndex(a => a.id === id || a._id === id);
+    if (idx !== -1) {
+      initialAwards[idx].isPublished = initialAwards[idx].isPublished === false ? true : false;
+    }
     if (mongoose.connection.readyState !== 1) {
-      const item = initialAwards.find(a => a.id === id || a._id === id);
-      if (item) {
-        item.isPublished = item.isPublished === false ? true : false;
-        return item;
-      }
-      return null;
+      return idx !== -1 ? initialAwards[idx] : null;
     }
     const doc = await AwardModel.findOne(buildQuery(id));
     if (!doc) return null;
@@ -288,13 +336,10 @@ const store = {
   async deleteAward(id) {
     await ensureDb();
     queryCache.invalidate('awards');
+    const idx = initialAwards.findIndex(a => a.id === id || a._id === id);
+    if (idx !== -1) initialAwards.splice(idx, 1);
     if (mongoose.connection.readyState !== 1) {
-      const idx = initialAwards.findIndex(a => a.id === id || a._id === id);
-      if (idx !== -1) {
-        initialAwards.splice(idx, 1);
-        return true;
-      }
-      return false;
+      return idx !== -1;
     }
     const res = await AwardModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;
@@ -312,7 +357,7 @@ const store = {
     try {
       const filter = isAdmin ? {} : { isPublished: { $ne: false } };
       const docs = await WorkshopModel.find(filter).sort({ createdAt: -1 }).lean();
-      const res = (docs && docs.length > 0) ? formatDocs(docs) : initialWorkshops;
+      const res = formatDocs(docs);
       queryCache.set(cacheKey, res);
       return res;
     } catch (e) {
@@ -330,19 +375,18 @@ const store = {
     }
     const itemData = { isPublished: true, ...data };
     const created = await WorkshopModel.create(itemData);
-    return formatDoc(created);
+    const formatted = formatDoc(created);
+    initialWorkshops.unshift(formatted);
+    return formatted;
   },
 
   async updateWorkshop(id, updates) {
     await ensureDb();
     queryCache.invalidate('workshops');
+    const idx = initialWorkshops.findIndex(w => w.id === id || w._id === id);
+    if (idx !== -1) Object.assign(initialWorkshops[idx], updates);
     if (mongoose.connection.readyState !== 1) {
-      const idx = initialWorkshops.findIndex(w => w.id === id || w._id === id);
-      if (idx !== -1) {
-        Object.assign(initialWorkshops[idx], updates);
-        return initialWorkshops[idx];
-      }
-      return null;
+      return idx !== -1 ? initialWorkshops[idx] : null;
     }
     const updated = await WorkshopModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     return formatDoc(updated);
@@ -351,13 +395,12 @@ const store = {
   async togglePublishWorkshop(id) {
     await ensureDb();
     queryCache.invalidate('workshops');
+    const idx = initialWorkshops.findIndex(w => w.id === id || w._id === id);
+    if (idx !== -1) {
+      initialWorkshops[idx].isPublished = initialWorkshops[idx].isPublished === false ? true : false;
+    }
     if (mongoose.connection.readyState !== 1) {
-      const item = initialWorkshops.find(w => w.id === id || w._id === id);
-      if (item) {
-        item.isPublished = item.isPublished === false ? true : false;
-        return item;
-      }
-      return null;
+      return idx !== -1 ? initialWorkshops[idx] : null;
     }
     const doc = await WorkshopModel.findOne(buildQuery(id));
     if (!doc) return null;
@@ -369,13 +412,10 @@ const store = {
   async deleteWorkshop(id) {
     await ensureDb();
     queryCache.invalidate('workshops');
+    const idx = initialWorkshops.findIndex(w => w.id === id || w._id === id);
+    if (idx !== -1) initialWorkshops.splice(idx, 1);
     if (mongoose.connection.readyState !== 1) {
-      const idx = initialWorkshops.findIndex(w => w.id === id || w._id === id);
-      if (idx !== -1) {
-        initialWorkshops.splice(idx, 1);
-        return true;
-      }
-      return false;
+      return idx !== -1;
     }
     const res = await WorkshopModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;
@@ -393,7 +433,7 @@ const store = {
     try {
       const filter = isAdmin ? {} : { isPublished: { $ne: false } };
       const docs = await ProjectModel.find(filter).sort({ createdAt: -1 }).lean();
-      const res = (docs && docs.length > 0) ? formatDocs(docs) : initialProjects;
+      const res = formatDocs(docs);
       queryCache.set(cacheKey, res);
       return res;
     } catch (e) {
@@ -411,19 +451,18 @@ const store = {
     }
     const itemData = { isPublished: true, ...data };
     const created = await ProjectModel.create(itemData);
-    return formatDoc(created);
+    const formatted = formatDoc(created);
+    initialProjects.unshift(formatted);
+    return formatted;
   },
 
   async updateProject(id, updates) {
     await ensureDb();
     queryCache.invalidate('projects');
+    const idx = initialProjects.findIndex(p => p.id === id || p._id === id);
+    if (idx !== -1) Object.assign(initialProjects[idx], updates);
     if (mongoose.connection.readyState !== 1) {
-      const idx = initialProjects.findIndex(p => p.id === id || p._id === id);
-      if (idx !== -1) {
-        Object.assign(initialProjects[idx], updates);
-        return initialProjects[idx];
-      }
-      return null;
+      return idx !== -1 ? initialProjects[idx] : null;
     }
     const updated = await ProjectModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     return formatDoc(updated);
@@ -432,13 +471,12 @@ const store = {
   async togglePublishProject(id) {
     await ensureDb();
     queryCache.invalidate('projects');
+    const idx = initialProjects.findIndex(p => p.id === id || p._id === id);
+    if (idx !== -1) {
+      initialProjects[idx].isPublished = initialProjects[idx].isPublished === false ? true : false;
+    }
     if (mongoose.connection.readyState !== 1) {
-      const item = initialProjects.find(p => p.id === id || p._id === id);
-      if (item) {
-        item.isPublished = item.isPublished === false ? true : false;
-        return item;
-      }
-      return null;
+      return idx !== -1 ? initialProjects[idx] : null;
     }
     const doc = await ProjectModel.findOne(buildQuery(id));
     if (!doc) return null;
@@ -450,13 +488,10 @@ const store = {
   async deleteProject(id) {
     await ensureDb();
     queryCache.invalidate('projects');
+    const idx = initialProjects.findIndex(p => p.id === id || p._id === id);
+    if (idx !== -1) initialProjects.splice(idx, 1);
     if (mongoose.connection.readyState !== 1) {
-      const idx = initialProjects.findIndex(p => p.id === id || p._id === id);
-      if (idx !== -1) {
-        initialProjects.splice(idx, 1);
-        return true;
-      }
-      return false;
+      return idx !== -1;
     }
     const res = await ProjectModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;
@@ -476,7 +511,7 @@ const store = {
       if (!isAdmin) filter.isPublished = { $ne: false };
       if (category && category !== 'All') filter.category = category;
       const docs = await GalleryModel.find(filter).sort({ createdAt: -1 }).lean();
-      const res = (docs && docs.length > 0) ? formatDocs(docs) : initialGallery;
+      const res = formatDocs(docs);
       queryCache.set(cacheKey, res);
       return res;
     } catch (e) {
@@ -494,19 +529,18 @@ const store = {
     }
     const itemData = { isPublished: true, ...data };
     const created = await GalleryModel.create(itemData);
-    return formatDoc(created);
+    const formatted = formatDoc(created);
+    initialGallery.unshift(formatted);
+    return formatted;
   },
 
   async updateGalleryItem(id, updates) {
     await ensureDb();
     queryCache.invalidate('gallery');
+    const idx = initialGallery.findIndex(g => g.id === id || g._id === id);
+    if (idx !== -1) Object.assign(initialGallery[idx], updates);
     if (mongoose.connection.readyState !== 1) {
-      const idx = initialGallery.findIndex(g => g.id === id || g._id === id);
-      if (idx !== -1) {
-        Object.assign(initialGallery[idx], updates);
-        return initialGallery[idx];
-      }
-      return null;
+      return idx !== -1 ? initialGallery[idx] : null;
     }
     const updated = await GalleryModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     return formatDoc(updated);
@@ -515,13 +549,12 @@ const store = {
   async togglePublishGallery(id) {
     await ensureDb();
     queryCache.invalidate('gallery');
+    const idx = initialGallery.findIndex(g => g.id === id || g._id === id);
+    if (idx !== -1) {
+      initialGallery[idx].isPublished = initialGallery[idx].isPublished === false ? true : false;
+    }
     if (mongoose.connection.readyState !== 1) {
-      const item = initialGallery.find(g => g.id === id || g._id === id);
-      if (item) {
-        item.isPublished = item.isPublished === false ? true : false;
-        return item;
-      }
-      return null;
+      return idx !== -1 ? initialGallery[idx] : null;
     }
     const doc = await GalleryModel.findOne(buildQuery(id));
     if (!doc) return null;
@@ -533,13 +566,10 @@ const store = {
   async deleteGalleryItem(id) {
     await ensureDb();
     queryCache.invalidate('gallery');
+    const idx = initialGallery.findIndex(g => g.id === id || g._id === id);
+    if (idx !== -1) initialGallery.splice(idx, 1);
     if (mongoose.connection.readyState !== 1) {
-      const idx = initialGallery.findIndex(g => g.id === id || g._id === id);
-      if (idx !== -1) {
-        initialGallery.splice(idx, 1);
-        return true;
-      }
-      return false;
+      return idx !== -1;
     }
     const res = await GalleryModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;
@@ -557,7 +587,7 @@ const store = {
     try {
       const filter = isAdmin ? {} : { isPublished: { $ne: false } };
       const docs = await TestModel.find(filter).sort({ createdAt: -1 }).lean();
-      const res = (docs && docs.length > 0) ? formatDocs(docs) : initialTests;
+      const res = formatDocs(docs);
       queryCache.set(cacheKey, res);
       return res;
     } catch (e) {
@@ -588,19 +618,18 @@ const store = {
     }
     const itemData = { isPublished: true, submissionsCount: 0, ...data };
     const created = await TestModel.create(itemData);
-    return formatDoc(created);
+    const formatted = formatDoc(created);
+    initialTests.unshift(formatted);
+    return formatted;
   },
 
   async updateTest(id, updates) {
     await ensureDb();
     queryCache.invalidate('tests');
+    const idx = initialTests.findIndex(t => t.id === id || t._id === id);
+    if (idx !== -1) Object.assign(initialTests[idx], updates);
     if (mongoose.connection.readyState !== 1) {
-      const idx = initialTests.findIndex(t => t.id === id || t._id === id);
-      if (idx !== -1) {
-        Object.assign(initialTests[idx], updates);
-        return initialTests[idx];
-      }
-      return null;
+      return idx !== -1 ? initialTests[idx] : null;
     }
     const updated = await TestModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     return formatDoc(updated);
@@ -609,13 +638,12 @@ const store = {
   async togglePublishTest(id) {
     await ensureDb();
     queryCache.invalidate('tests');
+    const idx = initialTests.findIndex(t => t.id === id || t._id === id);
+    if (idx !== -1) {
+      initialTests[idx].isPublished = initialTests[idx].isPublished === false ? true : false;
+    }
     if (mongoose.connection.readyState !== 1) {
-      const item = initialTests.find(t => t.id === id || t._id === id);
-      if (item) {
-        item.isPublished = item.isPublished === false ? true : false;
-        return item;
-      }
-      return null;
+      return idx !== -1 ? initialTests[idx] : null;
     }
     const doc = await TestModel.findOne(buildQuery(id));
     if (!doc) return null;
@@ -627,13 +655,10 @@ const store = {
   async deleteTest(id) {
     await ensureDb();
     queryCache.invalidate('tests');
+    const idx = initialTests.findIndex(t => t.id === id || t._id === id);
+    if (idx !== -1) initialTests.splice(idx, 1);
     if (mongoose.connection.readyState !== 1) {
-      const idx = initialTests.findIndex(t => t.id === id || t._id === id);
-      if (idx !== -1) {
-        initialTests.splice(idx, 1);
-        return true;
-      }
-      return false;
+      return idx !== -1;
     }
     const res = await TestModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;
@@ -742,7 +767,7 @@ const store = {
       if (!isAdmin) filter.isPublished = { $ne: false };
       if (category && category !== 'All') filter.category = category;
       const docs = await ArticleModel.find(filter).sort({ createdAt: -1 }).lean();
-      const res = (docs && docs.length > 0) ? formatDocs(docs) : initialArticles;
+      const res = formatDocs(docs);
       queryCache.set(cacheKey, res);
       return res;
     } catch (e) {
@@ -760,19 +785,18 @@ const store = {
     }
     const itemData = { isPublished: true, viewsCount: 0, ...data };
     const created = await ArticleModel.create(itemData);
-    return formatDoc(created);
+    const formatted = formatDoc(created);
+    initialArticles.unshift(formatted);
+    return formatted;
   },
 
   async updateArticle(id, updates) {
     await ensureDb();
     queryCache.invalidate('articles');
+    const idx = initialArticles.findIndex(a => a.id === id || a._id === id);
+    if (idx !== -1) Object.assign(initialArticles[idx], updates);
     if (mongoose.connection.readyState !== 1) {
-      const idx = initialArticles.findIndex(a => a.id === id || a._id === id);
-      if (idx !== -1) {
-        Object.assign(initialArticles[idx], updates);
-        return initialArticles[idx];
-      }
-      return null;
+      return idx !== -1 ? initialArticles[idx] : null;
     }
     const updated = await ArticleModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     return formatDoc(updated);
@@ -781,13 +805,12 @@ const store = {
   async togglePublishArticle(id) {
     await ensureDb();
     queryCache.invalidate('articles');
+    const idx = initialArticles.findIndex(a => a.id === id || a._id === id);
+    if (idx !== -1) {
+      initialArticles[idx].isPublished = initialArticles[idx].isPublished === false ? true : false;
+    }
     if (mongoose.connection.readyState !== 1) {
-      const item = initialArticles.find(a => a.id === id || a._id === id);
-      if (item) {
-        item.isPublished = item.isPublished === false ? true : false;
-        return item;
-      }
-      return null;
+      return idx !== -1 ? initialArticles[idx] : null;
     }
     const doc = await ArticleModel.findOne(buildQuery(id));
     if (!doc) return null;
@@ -799,13 +822,10 @@ const store = {
   async deleteArticle(id) {
     await ensureDb();
     queryCache.invalidate('articles');
+    const idx = initialArticles.findIndex(a => a.id === id || a._id === id);
+    if (idx !== -1) initialArticles.splice(idx, 1);
     if (mongoose.connection.readyState !== 1) {
-      const idx = initialArticles.findIndex(a => a.id === id || a._id === id);
-      if (idx !== -1) {
-        initialArticles.splice(idx, 1);
-        return true;
-      }
-      return false;
+      return idx !== -1;
     }
     const res = await ArticleModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;
@@ -852,13 +872,10 @@ const store = {
   async deleteMessage(id) {
     await ensureDb();
     queryCache.invalidate('stats');
+    const idx = (initialMessages || []).findIndex(m => m.id === id || m._id === id);
+    if (idx !== -1) initialMessages.splice(idx, 1);
     if (mongoose.connection.readyState !== 1) {
-      const idx = (initialMessages || []).findIndex(m => m.id === id || m._id === id);
-      if (idx !== -1) {
-        initialMessages.splice(idx, 1);
-        return true;
-      }
-      return false;
+      return idx !== -1;
     }
     const res = await MessageModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;

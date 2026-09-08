@@ -20,7 +20,7 @@ const AwardsPage = () => {
       awardService.getAll(),
       profileService.getProfile()
     ]).then(([awdRes, profRes]) => {
-      if (awdRes.status === 'fulfilled' && Array.isArray(awdRes.value.data?.data) && awdRes.value.data.data.length > 0) {
+      if (awdRes.status === 'fulfilled' && Array.isArray(awdRes.value.data?.data)) {
         setAwards(awdRes.value.data.data);
       }
       if (profRes.status === 'fulfilled' && profRes.value.data?.data?.profile) {

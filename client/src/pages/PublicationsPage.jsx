@@ -20,7 +20,7 @@ const PublicationsPage = () => {
       publicationService.getAll(),
       profileService.getProfile()
     ]).then(([pubRes, profRes]) => {
-      if (pubRes.status === 'fulfilled' && Array.isArray(pubRes.value.data?.data) && pubRes.value.data.data.length > 0) {
+      if (pubRes.status === 'fulfilled' && Array.isArray(pubRes.value.data?.data)) {
         setPublications(pubRes.value.data.data);
       }
       if (profRes.status === 'fulfilled' && profRes.value.data?.data?.profile) {

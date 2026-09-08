@@ -42,7 +42,7 @@ const AdminWorkshops = () => {
   const fetchWorkshops = async () => {
     try {
       const res = await workshopService.getAll();
-      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+      if (res.data?.success && Array.isArray(res.data.data)) {
         setWorkshops(res.data.data);
       }
     } catch (err) {
@@ -109,12 +109,14 @@ const AdminWorkshops = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this workshop entry?')) return;
+    setWorkshops(prev => prev.filter(w => (w.id || w._id) !== id));
     try {
       await workshopService.delete(id);
       setStatusMsg({ type: 'success', text: 'Workshop deleted successfully.' });
       fetchWorkshops();
     } catch (err) {
       setStatusMsg({ type: 'error', text: 'Failed to delete workshop.' });
+      fetchWorkshops();
     }
   };
 
