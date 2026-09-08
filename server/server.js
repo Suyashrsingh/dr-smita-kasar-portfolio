@@ -1,8 +1,9 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const path = require('path');
 const mongoose = require('mongoose');
 const { connectDB, getStatus } = require('./config/db');
 
@@ -32,34 +33,37 @@ app.use(async (req, res, next) => {
 // Static uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Core API Router definition
+const apiRouter = express.Router();
+
 // Health & System Status Endpoint
-app.get('/api/status', (req, res) => {
+apiRouter.get('/status', (req, res) => {
+  const isDbReady = mongoose.connection.readyState === 1;
   res.json({
     status: 'online',
     app: 'Dr. Smita Kasar Academic Portfolio API',
-    database: getStatus() ? 'MongoDB Atlas (Connected)' : 'In-Memory / Local Cache (Ready to sync with Atlas)',
+    database: isDbReady ? 'MongoDB Atlas (Connected)' : 'Disconnected / Awaiting URI',
     timestamp: new Date().toISOString()
   });
 });
 
-// Mount Routes
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/profile', require('./routes/profileRoutes'));
-app.use('/api/publications', require('./routes/publicationRoutes'));
-app.use('/api/awards', require('./routes/awardRoutes'));
-app.use('/api/workshops', require('./routes/workshopRoutes'));
-app.use('/api/projects', require('./routes/projectRoutes'));
-app.use('/api/gallery', require('./routes/galleryRoutes'));
-app.use('/api/tests', require('./routes/testRoutes'));
-app.use('/api/articles', require('./routes/articleRoutes'));
-app.use('/api/messages', require('./routes/messageRoutes'));
-app.use('/api/dashboard', require('./routes/dashboardRoutes'));
-app.use('/api/upload', require('./routes/uploadRoutes'));
+// Mount Routes on apiRouter
+apiRouter.use('/auth', require('./routes/authRoutes'));
+apiRouter.use('/profile', require('./routes/profileRoutes'));
+apiRouter.use('/publications', require('./routes/publicationRoutes'));
+apiRouter.use('/awards', require('./routes/awardRoutes'));
+apiRouter.use('/workshops', require('./routes/workshopRoutes'));
+apiRouter.use('/projects', require('./routes/projectRoutes'));
+apiRouter.use('/gallery', require('./routes/galleryRoutes'));
+apiRouter.use('/tests', require('./routes/testRoutes'));
+apiRouter.use('/articles', require('./routes/articleRoutes'));
+apiRouter.use('/messages', require('./routes/messageRoutes'));
+apiRouter.use('/dashboard', require('./routes/dashboardRoutes'));
+apiRouter.use('/upload', require('./routes/uploadRoutes'));
 
-// 404 Handler for API
-app.use('/api/*', (req, res) => {
-  res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });
-});
+// Mount on BOTH '/api' and '/' to seamlessly support Vercel serverless function invocations
+app.use('/api', apiRouter);
+app.use('/', apiRouter);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
