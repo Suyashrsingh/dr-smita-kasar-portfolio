@@ -38,23 +38,36 @@ import {
   testService,
   articleService
 } from '../services/api';
+import {
+  initialProfile,
+  initialEducation,
+  initialExperience,
+  initialResearchAreas,
+  initialPublications,
+  initialAwards,
+  initialWorkshops,
+  initialProjects,
+  initialGallery,
+  initialTests,
+  initialArticles
+} from '../data/fallbackData';
 
 const HomePage = () => {
   const [isResumeOpen, setIsResumeOpen] = useState(false);
   const [data, setData] = useState({
-    profile: null,
-    education: [],
-    experience: [],
-    researchAreas: [],
-    publications: [],
-    awards: [],
-    workshops: [],
-    projects: [],
-    articles: [],
-    tests: [],
-    gallery: []
+    profile: initialProfile,
+    education: initialEducation,
+    experience: initialExperience,
+    researchAreas: initialResearchAreas,
+    publications: initialPublications,
+    awards: initialAwards,
+    workshops: initialWorkshops,
+    projects: initialProjects,
+    articles: initialArticles,
+    tests: initialTests,
+    gallery: initialGallery
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -71,19 +84,21 @@ const HomePage = () => {
           articleService.getAll()
         ]);
 
-        setData({
-          profile: profRes.status === 'fulfilled' ? profRes.value.data.data.profile : null,
-          education: profRes.status === 'fulfilled' ? profRes.value.data.data.education : [],
-          experience: profRes.status === 'fulfilled' ? profRes.value.data.data.experience : [],
-          researchAreas: profRes.status === 'fulfilled' ? profRes.value.data.data.researchAreas : [],
-          publications: pubRes.status === 'fulfilled' ? pubRes.value.data.data : [],
-          awards: awdRes.status === 'fulfilled' ? awdRes.value.data.data : [],
-          workshops: wkpRes.status === 'fulfilled' ? wkpRes.value.data.data : [],
-          projects: prjRes.status === 'fulfilled' ? prjRes.value.data.data : [],
-          gallery: galRes.status === 'fulfilled' ? galRes.value.data.data : [],
-          tests: tstRes.status === 'fulfilled' ? tstRes.value.data.data : [],
-          articles: artRes.status === 'fulfilled' ? artRes.value.data.data : []
-        });
+        const profData = profRes.status === 'fulfilled' && profRes.value.data?.data ? profRes.value.data.data : null;
+
+        setData(prev => ({
+          profile: profData?.profile || prev.profile,
+          education: (profData?.education && profData.education.length > 0) ? profData.education : prev.education,
+          experience: (profData?.experience && profData.experience.length > 0) ? profData.experience : prev.experience,
+          researchAreas: (profData?.researchAreas && profData.researchAreas.length > 0) ? profData.researchAreas : prev.researchAreas,
+          publications: (pubRes.status === 'fulfilled' && Array.isArray(pubRes.value.data?.data) && pubRes.value.data.data.length > 0) ? pubRes.value.data.data : prev.publications,
+          awards: (awdRes.status === 'fulfilled' && Array.isArray(awdRes.value.data?.data) && awdRes.value.data.data.length > 0) ? awdRes.value.data.data : prev.awards,
+          workshops: (wkpRes.status === 'fulfilled' && Array.isArray(wkpRes.value.data?.data) && wkpRes.value.data.data.length > 0) ? wkpRes.value.data.data : prev.workshops,
+          projects: (prjRes.status === 'fulfilled' && Array.isArray(prjRes.value.data?.data) && prjRes.value.data.data.length > 0) ? prjRes.value.data.data : prev.projects,
+          gallery: (galRes.status === 'fulfilled' && Array.isArray(galRes.value.data?.data) && galRes.value.data.data.length > 0) ? galRes.value.data.data : prev.gallery,
+          tests: (tstRes.status === 'fulfilled' && Array.isArray(tstRes.value.data?.data) && tstRes.value.data.data.length > 0) ? tstRes.value.data.data : prev.tests,
+          articles: (artRes.status === 'fulfilled' && Array.isArray(artRes.value.data?.data) && artRes.value.data.data.length > 0) ? artRes.value.data.data : prev.articles
+        }));
       } catch (err) {
         console.error('Failed to load portfolio data:', err);
       } finally {

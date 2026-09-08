@@ -29,15 +29,15 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          npm install
-          cd client && npm install && cd ..
-          cd server && npm install && cd ..
+          npm install --no-audit --no-fund
+          npm --prefix client install --no-audit --no-fund
+          npm --prefix server install --no-audit --no-fund
 
       - name: Build Frontend for Production (Vite)
         run: npm run build
 
       - name: Verify Backend Server Code
-        run: node -e "require('./server/server.js'); console.log('Backend code verified.');"
+        run: node -e "require('./server/server.js'); console.log('Backend code verified.'); process.exit(0);"
 
   # ==============================
   # Job 2: Auto Deploy to Vercel (CD)

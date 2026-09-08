@@ -6,11 +6,12 @@ import ResumeModal from '../components/ResumeModal';
 import Gallery from '../components/Gallery';
 import { Image as ImageIcon, Camera, Sparkles } from 'lucide-react';
 import { galleryService, profileService } from '../services/api';
+import { initialGallery, initialProfile } from '../data/fallbackData';
 
 const GalleryPage = () => {
-  const [gallery, setGallery] = useState([]);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [gallery, setGallery] = useState(initialGallery);
+  const [profile, setProfile] = useState(initialProfile);
+  const [loading, setLoading] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
 
   useEffect(() => {
@@ -19,11 +20,11 @@ const GalleryPage = () => {
       galleryService.getAll(),
       profileService.getProfile()
     ]).then(([galRes, profRes]) => {
-      if (galRes.status === 'fulfilled') {
-        setGallery(galRes.value.data?.data || []);
+      if (galRes.status === 'fulfilled' && Array.isArray(galRes.value.data?.data) && galRes.value.data.data.length > 0) {
+        setGallery(galRes.value.data.data);
       }
-      if (profRes.status === 'fulfilled') {
-        setProfile(profRes.value.data?.data?.profile || null);
+      if (profRes.status === 'fulfilled' && profRes.value.data?.data?.profile) {
+        setProfile(profRes.value.data.data.profile);
       }
     }).finally(() => setLoading(false));
   }, []);

@@ -11,7 +11,7 @@ const connectDB = async () => {
 
   const uri = process.env.MONGODB_URI;
   if (!uri) {
-    console.warn('⚠️  [MongoDB] MONGODB_URI not set. Running with in-memory / local store.');
+    console.warn('⚠️  [MongoDB] MONGODB_URI environment variable not set.');
     return false;
   }
 

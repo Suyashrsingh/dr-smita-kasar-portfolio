@@ -7,10 +7,15 @@ import Education from '../components/Education';
 import Experience from '../components/Experience';
 import { GraduationCap, Briefcase, Award, Download, CheckCircle2 } from 'lucide-react';
 import { profileService } from '../services/api';
+import { initialProfile, initialEducation, initialExperience } from '../data/fallbackData';
 
 const QualificationsPage = () => {
-  const [data, setData] = useState({ profile: null, education: [], experience: [] });
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState({ 
+    profile: initialProfile, 
+    education: initialEducation, 
+    experience: initialExperience 
+  });
+  const [loading, setLoading] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
 
   useEffect(() => {
@@ -18,11 +23,11 @@ const QualificationsPage = () => {
     profileService.getProfile()
       .then(res => {
         if (res.data?.data) {
-          setData({
-            profile: res.data.data.profile,
-            education: res.data.data.education || [],
-            experience: res.data.data.experience || []
-          });
+          setData(prev => ({
+            profile: res.data.data.profile || prev.profile,
+            education: (res.data.data.education && res.data.data.education.length > 0) ? res.data.data.education : prev.education,
+            experience: (res.data.data.experience && res.data.data.experience.length > 0) ? res.data.data.experience : prev.experience
+          }));
         }
       })
       .catch(err => console.error('Failed to load qualifications:', err))

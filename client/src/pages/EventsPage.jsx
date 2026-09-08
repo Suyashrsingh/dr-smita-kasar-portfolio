@@ -19,14 +19,15 @@ import {
   Mic
 } from 'lucide-react';
 import { workshopService, galleryService, profileService } from '../services/api';
+import { initialWorkshops, initialGallery, initialProfile } from '../data/fallbackData';
 
 const EventsPage = () => {
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'keynotes', 'workshops', 'gallery'
   const [searchQuery, setSearchQuery] = useState('');
-  const [workshops, setWorkshops] = useState([]);
-  const [gallery, setGallery] = useState([]);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [workshops, setWorkshops] = useState(initialWorkshops);
+  const [gallery, setGallery] = useState(initialGallery);
+  const [profile, setProfile] = useState(initialProfile);
+  const [loading, setLoading] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
 
@@ -37,14 +38,14 @@ const EventsPage = () => {
       galleryService.getAll(),
       profileService.getProfile()
     ]).then(([wkpRes, galRes, profRes]) => {
-      if (wkpRes.status === 'fulfilled') {
-        setWorkshops(wkpRes.value.data?.data || []);
+      if (wkpRes.status === 'fulfilled' && Array.isArray(wkpRes.value.data?.data) && wkpRes.value.data.data.length > 0) {
+        setWorkshops(wkpRes.value.data.data);
       }
-      if (galRes.status === 'fulfilled') {
-        setGallery(galRes.value.data?.data || []);
+      if (galRes.status === 'fulfilled' && Array.isArray(galRes.value.data?.data) && galRes.value.data.data.length > 0) {
+        setGallery(galRes.value.data.data);
       }
-      if (profRes.status === 'fulfilled') {
-        setProfile(profRes.value.data?.data?.profile || null);
+      if (profRes.status === 'fulfilled' && profRes.value.data?.data?.profile) {
+        setProfile(profRes.value.data.data.profile);
       }
     }).finally(() => setLoading(false));
   }, []);

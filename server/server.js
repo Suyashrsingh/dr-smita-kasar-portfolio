@@ -24,7 +24,7 @@ app.use(morgan('dev'));
 
 // Ensure MongoDB is connected before handling any API requests
 app.use(async (req, res, next) => {
-  if (process.env.MONGODB_URI && mongoose.connection.readyState !== 1) {
+  if (mongoose.connection.readyState !== 1) {
     await connectDB();
   }
   next();

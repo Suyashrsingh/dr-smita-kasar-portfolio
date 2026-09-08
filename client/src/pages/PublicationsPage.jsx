@@ -6,11 +6,12 @@ import ResumeModal from '../components/ResumeModal';
 import Publications from '../components/Publications';
 import { BookOpen, ExternalLink, ShieldCheck, Download, Award } from 'lucide-react';
 import { publicationService, profileService } from '../services/api';
+import { initialPublications, initialProfile } from '../data/fallbackData';
 
 const PublicationsPage = () => {
-  const [publications, setPublications] = useState([]);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [publications, setPublications] = useState(initialPublications);
+  const [profile, setProfile] = useState(initialProfile);
+  const [loading, setLoading] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
 
   useEffect(() => {
@@ -19,11 +20,11 @@ const PublicationsPage = () => {
       publicationService.getAll(),
       profileService.getProfile()
     ]).then(([pubRes, profRes]) => {
-      if (pubRes.status === 'fulfilled') {
-        setPublications(pubRes.value.data?.data || []);
+      if (pubRes.status === 'fulfilled' && Array.isArray(pubRes.value.data?.data) && pubRes.value.data.data.length > 0) {
+        setPublications(pubRes.value.data.data);
       }
-      if (profRes.status === 'fulfilled') {
-        setProfile(profRes.value.data?.data?.profile || null);
+      if (profRes.status === 'fulfilled' && profRes.value.data?.data?.profile) {
+        setProfile(profRes.value.data.data.profile);
       }
     }).finally(() => setLoading(false));
   }, []);

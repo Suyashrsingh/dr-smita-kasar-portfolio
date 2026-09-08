@@ -6,11 +6,12 @@ import ResumeModal from '../components/ResumeModal';
 import Workshops from '../components/Workshops';
 import { Presentation, Users, Calendar, Sparkles } from 'lucide-react';
 import { workshopService, profileService } from '../services/api';
+import { initialWorkshops, initialProfile } from '../data/fallbackData';
 
 const WorkshopsPage = () => {
-  const [workshops, setWorkshops] = useState([]);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [workshops, setWorkshops] = useState(initialWorkshops);
+  const [profile, setProfile] = useState(initialProfile);
+  const [loading, setLoading] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
 
   useEffect(() => {
@@ -19,11 +20,11 @@ const WorkshopsPage = () => {
       workshopService.getAll(),
       profileService.getProfile()
     ]).then(([wkpRes, profRes]) => {
-      if (wkpRes.status === 'fulfilled') {
-        setWorkshops(wkpRes.value.data?.data || []);
+      if (wkpRes.status === 'fulfilled' && Array.isArray(wkpRes.value.data?.data) && wkpRes.value.data.data.length > 0) {
+        setWorkshops(wkpRes.value.data.data);
       }
-      if (profRes.status === 'fulfilled') {
-        setProfile(profRes.value.data?.data?.profile || null);
+      if (profRes.status === 'fulfilled' && profRes.value.data?.data?.profile) {
+        setProfile(profRes.value.data.data.profile);
       }
     }).finally(() => setLoading(false));
   }, []);

@@ -26,12 +26,13 @@ import {
   HeartHandshake
 } from 'lucide-react';
 import { profileService } from '../services/api';
+import { initialProfile, initialEducation, initialExperience } from '../data/fallbackData';
 
 const AboutPage = () => {
-  const [profile, setProfile] = useState(null);
-  const [education, setEducation] = useState([]);
-  const [experience, setExperience] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(initialProfile);
+  const [education, setEducation] = useState(initialEducation);
+  const [experience, setExperience] = useState(initialExperience);
+  const [loading, setLoading] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
 
   useEffect(() => {
@@ -39,12 +40,12 @@ const AboutPage = () => {
     profileService.getProfile()
       .then(res => {
         if (res.data?.data) {
-          setProfile(res.data.data.profile);
-          setEducation(res.data.data.education || []);
-          setExperience(res.data.data.experience || []);
+          if (res.data.data.profile) setProfile(res.data.data.profile);
+          if (res.data.data.education && res.data.data.education.length > 0) setEducation(res.data.data.education);
+          if (res.data.data.experience && res.data.data.experience.length > 0) setExperience(res.data.data.experience);
         }
       })
-      .catch(err => console.error('Failed to load profile:', err))
+      .catch(err => console.error('Failed to load profile data:', err))
       .finally(() => setLoading(false));
   }, []);
 

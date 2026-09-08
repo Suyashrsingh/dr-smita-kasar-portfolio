@@ -25,11 +25,12 @@ import {
 } from 'lucide-react';
 import { profileService, projectService } from '../services/api';
 import { Link } from 'react-router-dom';
+import { initialProfile, initialResearchAreas, initialProjects } from '../data/fallbackData';
 
 const ResearchPage = () => {
-  const [data, setData] = useState({ profile: null, researchAreas: [] });
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState({ profile: initialProfile, researchAreas: initialResearchAreas });
+  const [projects, setProjects] = useState(initialProjects);
+  const [loading, setLoading] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
 
   useEffect(() => {
@@ -40,12 +41,14 @@ const ResearchPage = () => {
     ])
       .then(([profRes, projRes]) => {
         if (profRes.status === 'fulfilled' && profRes.value.data?.data) {
-          setData({
-            profile: profRes.value.data.data.profile,
-            researchAreas: profRes.value.data.data.researchAreas || []
-          });
+          setData(prev => ({
+            profile: profRes.value.data.data.profile || prev.profile,
+            researchAreas: (profRes.value.data.data.researchAreas && profRes.value.data.data.researchAreas.length > 0)
+              ? profRes.value.data.data.researchAreas
+              : prev.researchAreas
+          }));
         }
-        if (projRes.status === 'fulfilled' && projRes.value.data?.data) {
+        if (projRes.status === 'fulfilled' && Array.isArray(projRes.value.data?.data) && projRes.value.data.data.length > 0) {
           setProjects(projRes.value.data.data);
         }
       })

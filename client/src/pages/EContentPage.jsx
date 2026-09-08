@@ -19,13 +19,14 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { articleService, testService, profileService } from '../services/api';
+import { initialArticles, initialTests, initialProfile } from '../data/fallbackData';
 
 const EContentPage = () => {
   const [activeTab, setActiveTab] = useState('notes'); // 'notes' or 'tests'
-  const [articles, setArticles] = useState([]);
-  const [tests, setTests] = useState([]);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [articles, setArticles] = useState(initialArticles);
+  const [tests, setTests] = useState(initialTests);
+  const [profile, setProfile] = useState(initialProfile);
+  const [loading, setLoading] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
 
   useEffect(() => {
@@ -35,14 +36,14 @@ const EContentPage = () => {
       testService.getAll(),
       profileService.getProfile()
     ]).then(([artRes, tstRes, profRes]) => {
-      if (artRes.status === 'fulfilled') {
-        setArticles(artRes.value.data?.data || []);
+      if (artRes.status === 'fulfilled' && Array.isArray(artRes.value.data?.data) && artRes.value.data.data.length > 0) {
+        setArticles(artRes.value.data.data);
       }
-      if (tstRes.status === 'fulfilled') {
-        setTests(tstRes.value.data?.data || []);
+      if (tstRes.status === 'fulfilled' && Array.isArray(tstRes.value.data?.data) && tstRes.value.data.data.length > 0) {
+        setTests(tstRes.value.data.data);
       }
-      if (profRes.status === 'fulfilled') {
-        setProfile(profRes.value.data?.data?.profile || null);
+      if (profRes.status === 'fulfilled' && profRes.value.data?.data?.profile) {
+        setProfile(profRes.value.data.data.profile);
       }
     }).finally(() => setLoading(false));
   }, []);

@@ -6,11 +6,12 @@ import ResumeModal from '../components/ResumeModal';
 import Awards from '../components/Awards';
 import { Award, Trophy, Star, ShieldCheck } from 'lucide-react';
 import { awardService, profileService } from '../services/api';
+import { initialAwards, initialProfile } from '../data/fallbackData';
 
 const AwardsPage = () => {
-  const [awards, setAwards] = useState([]);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [awards, setAwards] = useState(initialAwards);
+  const [profile, setProfile] = useState(initialProfile);
+  const [loading, setLoading] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
 
   useEffect(() => {
@@ -19,11 +20,11 @@ const AwardsPage = () => {
       awardService.getAll(),
       profileService.getProfile()
     ]).then(([awdRes, profRes]) => {
-      if (awdRes.status === 'fulfilled') {
-        setAwards(awdRes.value.data?.data || []);
+      if (awdRes.status === 'fulfilled' && Array.isArray(awdRes.value.data?.data) && awdRes.value.data.data.length > 0) {
+        setAwards(awdRes.value.data.data);
       }
-      if (profRes.status === 'fulfilled') {
-        setProfile(profRes.value.data?.data?.profile || null);
+      if (profRes.status === 'fulfilled' && profRes.value.data?.data?.profile) {
+        setProfile(profRes.value.data.data.profile);
       }
     }).finally(() => setLoading(false));
   }, []);

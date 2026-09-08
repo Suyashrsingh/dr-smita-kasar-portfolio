@@ -6,10 +6,11 @@ import ResumeModal from '../components/ResumeModal';
 import Contact from '../components/Contact';
 import { Mail, Phone, MapPin, Clock, Building2, Send, CheckCircle2 } from 'lucide-react';
 import { profileService } from '../services/api';
+import { initialProfile } from '../data/fallbackData';
 
 const ContactPage = () => {
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(initialProfile);
+  const [loading, setLoading] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
 
   useEffect(() => {

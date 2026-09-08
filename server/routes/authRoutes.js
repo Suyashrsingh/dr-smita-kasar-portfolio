@@ -18,7 +18,7 @@ router.post('/login', async (req, res) => {
     const cleanPassword = password.trim();
 
     // Ensure database connection attempt
-    if (process.env.MONGODB_URI && mongoose.connection.readyState !== 1) {
+    if (mongoose.connection.readyState !== 1) {
       await connectDB();
     }
 

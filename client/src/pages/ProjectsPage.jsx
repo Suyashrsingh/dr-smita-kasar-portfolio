@@ -6,11 +6,12 @@ import ResumeModal from '../components/ResumeModal';
 import Projects from '../components/Projects';
 import { Lightbulb, DollarSign, Building, Sparkles, ShieldCheck } from 'lucide-react';
 import { projectService, profileService } from '../services/api';
+import { initialProjects, initialProfile } from '../data/fallbackData';
 
 const ProjectsPage = () => {
-  const [projects, setProjects] = useState([]);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState(initialProjects);
+  const [profile, setProfile] = useState(initialProfile);
+  const [loading, setLoading] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
 
   useEffect(() => {
@@ -19,11 +20,11 @@ const ProjectsPage = () => {
       projectService.getAll(),
       profileService.getProfile()
     ]).then(([prjRes, profRes]) => {
-      if (prjRes.status === 'fulfilled') {
-        setProjects(prjRes.value.data?.data || []);
+      if (prjRes.status === 'fulfilled' && Array.isArray(prjRes.value.data?.data) && prjRes.value.data.data.length > 0) {
+        setProjects(prjRes.value.data.data);
       }
-      if (profRes.status === 'fulfilled') {
-        setProfile(profRes.value.data?.data?.profile || null);
+      if (profRes.status === 'fulfilled' && profRes.value.data?.data?.profile) {
+        setProfile(profRes.value.data.data.profile);
       }
     }).finally(() => setLoading(false));
   }, []);
