@@ -5,7 +5,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const mongoose = require('mongoose');
-const { connectDB, getStatus } = require('./config/db');
+const { connectDB, getStatus, getLastError } = require('./config/db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -44,9 +44,10 @@ apiRouter.get('/status', async (req, res) => {
   const isDbReady = mongoose.connection.readyState === 1;
   res.json({
     status: 'online',
-    version: '2.5.0',
+    version: '2.5.1',
     app: 'Dr. Smita Kasar Academic Portfolio API',
     database: isDbReady ? 'MongoDB Atlas (Connected)' : 'Disconnected / Awaiting URI',
+    dbError: getLastError(),
     timestamp: new Date().toISOString()
   });
 });

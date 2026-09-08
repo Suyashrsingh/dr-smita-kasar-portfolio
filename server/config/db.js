@@ -10,11 +10,14 @@ if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
+let lastError = null;
+
 const connectDB = async () => {
   // Secure base64-encoded fallback URI if process.env.MONGODB_URI is not set in deployment environment
   const fallbackUri = Buffer.from('bW9uZ29kYitzcnY6Ly9zdXlhc2hzaW5naG1pdF9kYl91c2VyOlZGZm1nMHhob2ZaQjFiZEFAc2sxLnpyMmpwenYubW9uZ29kYi5uZXQvZHJfc21pdGFfcG9ydGZvbGlvP3JldHJ5V3JpdGVzPXRydWUmdz1tYWpvcml0eQ==', 'base64').toString('utf-8');
   const uri = process.env.MONGODB_URI || fallbackUri;
   if (!uri) {
+    lastError = 'No URI provided';
     return false;
   }
 
@@ -29,9 +32,11 @@ const connectDB = async () => {
     };
 
     cached.promise = mongoose.connect(uri, opts).then((mongooseInstance) => {
+      lastError = null;
       console.log(`✅ [MongoDB Atlas] Connected successfully to host: ${mongooseInstance.connection.host}`);
       return mongooseInstance;
     }).catch((err) => {
+      lastError = err.message;
       console.warn(`⚠️ [MongoDB Atlas] Connection failed: ${err.message}`);
       cached.promise = null;
       return null;
@@ -42,12 +47,14 @@ const connectDB = async () => {
     cached.conn = await cached.promise;
     return !!cached.conn;
   } catch (e) {
+    lastError = e.message;
     cached.promise = null;
     return false;
   }
 };
 
 const getStatus = () => mongoose.connection.readyState === 1;
+const getLastError = () => lastError;
 
-module.exports = { connectDB, getStatus };
+module.exports = { connectDB, getStatus, getLastError };
 
