@@ -9,11 +9,19 @@ const api = axios.create({
   timeout: 15000,
 });
 
-// Request interceptor to attach JWT token
+// Request interceptor to attach JWT token and prevent browser caching
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('smita_admin_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  // Explicitly prevent browser HTTP and memory caching
+  config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+  config.headers['Pragma'] = 'no-cache';
+  config.headers['Expires'] = '0';
+
+  if (config.method === 'get') {
+    config.params = { ...config.params, _t: Date.now() };
   }
   return config;
 }, (error) => {

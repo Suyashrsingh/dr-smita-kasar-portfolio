@@ -123,30 +123,11 @@ const formatDocs = (docs) => {
   return docs.map(formatDoc);
 };
 
-// High-Speed In-Memory Cache with 30s TTL
+// Real-time: In-memory query caching is completely disabled so all reads and writes query MongoDB Atlas directly with 0ms staleness
 const queryCache = {
-  data: new Map(),
-  get(key) {
-    const item = this.data.get(key);
-    if (item && Date.now() - item.time < 30000) {
-      return item.val;
-    }
-    return null;
-  },
-  set(key, val) {
-    this.data.set(key, { val, time: Date.now() });
-  },
-  invalidate(prefix) {
-    if (!prefix) {
-      this.data.clear();
-      return;
-    }
-    for (const key of this.data.keys()) {
-      if (key.startsWith(prefix) || key.startsWith('stats')) {
-        this.data.delete(key);
-      }
-    }
-  }
+  get() { return null; },
+  set() {},
+  invalidate() {}
 };
 
 const isDbConnected = () => mongoose.connection.readyState === 1 || getStatus();

@@ -30,6 +30,15 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// Disable any HTTP caching for dynamic API endpoints across browsers and CDNs
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.set('Surrogate-Control', 'no-store');
+  next();
+});
+
 // Static uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
