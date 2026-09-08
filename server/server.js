@@ -37,10 +37,14 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const apiRouter = express.Router();
 
 // Health & System Status Endpoint
-apiRouter.get('/status', (req, res) => {
+apiRouter.get('/status', async (req, res) => {
+  if (mongoose.connection.readyState !== 1) {
+    await connectDB();
+  }
   const isDbReady = mongoose.connection.readyState === 1;
   res.json({
     status: 'online',
+    version: '2.5.0',
     app: 'Dr. Smita Kasar Academic Portfolio API',
     database: isDbReady ? 'MongoDB Atlas (Connected)' : 'Disconnected / Awaiting URI',
     timestamp: new Date().toISOString()
