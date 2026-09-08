@@ -5,6 +5,14 @@ const {
   initialEducation,
   initialExperience,
   initialResearchAreas,
+  initialPublications,
+  initialAwards,
+  initialWorkshops,
+  initialProjects,
+  initialGallery,
+  initialArticles,
+  initialTests,
+  initialMessages
 } = require('./initialData');
 
 // Mongoose Model imports
@@ -21,7 +29,11 @@ const ArticleModel = require('../models/Article');
 
 const ensureDb = async () => {
   if (mongoose.connection.readyState !== 1) {
-    await connectDB();
+    try {
+      await connectDB();
+    } catch (err) {
+      // Silent error; fallback data will be used
+    }
   }
 };
 
@@ -49,7 +61,6 @@ const formatDocs = (docs) => {
   if (!docs || !Array.isArray(docs)) return [];
   return docs.map(formatDoc);
 };
-
 
 // High-Speed In-Memory Cache with 30s TTL
 const queryCache = {
@@ -85,17 +96,29 @@ const store = {
     const cached = queryCache.get('profile');
     if (cached) return cached;
     await ensureDb();
-    let p = await ProfileModel.findOne().lean();
-    if (!p) {
-      p = await ProfileModel.create(initialProfile);
+    if (mongoose.connection.readyState !== 1) {
+      return initialProfile;
     }
-    const res = formatDoc(p) || initialProfile;
-    queryCache.set('profile', res);
-    return res;
+    try {
+      let p = await ProfileModel.findOne().lean();
+      if (!p) {
+        p = await ProfileModel.create(initialProfile);
+      }
+      const res = formatDoc(p) || initialProfile;
+      queryCache.set('profile', res);
+      return res;
+    } catch (e) {
+      return initialProfile;
+    }
   },
 
   async updateProfile(updates) {
     await ensureDb();
+    if (mongoose.connection.readyState !== 1) {
+      Object.assign(initialProfile, updates);
+      queryCache.invalidate('profile');
+      return initialProfile;
+    }
     let p = await ProfileModel.findOneAndUpdate({}, { $set: updates }, { new: true, upsert: true }).lean();
     queryCache.invalidate('profile');
     return formatDoc(p);
@@ -111,52 +134,88 @@ const store = {
     const cached = queryCache.get(cacheKey);
     if (cached) return cached;
     await ensureDb();
-    const filter = {};
-    if (!isAdmin) filter.isPublished = { $ne: false };
-    if (query.type && query.type !== 'All') filter.type = query.type;
-    if (query.year) filter.year = Number(query.year);
-    if (query.search) {
-      filter.$or = [
-        { title: { $regex: query.search, $options: 'i' } },
-        { authors: { $regex: query.search, $options: 'i' } },
-        { journal: { $regex: query.search, $options: 'i' } }
-      ];
+    if (mongoose.connection.readyState !== 1) {
+      return initialPublications;
     }
-    const docs = await PublicationModel.find(filter).sort({ year: -1, createdAt: -1 }).lean();
-    const res = formatDocs(docs);
-    queryCache.set(cacheKey, res);
-    return res;
+    try {
+      const filter = {};
+      if (!isAdmin) filter.isPublished = { $ne: false };
+      if (query.type && query.type !== 'All') filter.type = query.type;
+      if (query.year) filter.year = Number(query.year);
+      if (query.search) {
+        filter.$or = [
+          { title: { $regex: query.search, $options: 'i' } },
+          { authors: { $regex: query.search, $options: 'i' } },
+          { journal: { $regex: query.search, $options: 'i' } }
+        ];
+      }
+      const docs = await PublicationModel.find(filter).sort({ year: -1, createdAt: -1 }).lean();
+      const res = (docs && docs.length > 0) ? formatDocs(docs) : initialPublications;
+      queryCache.set(cacheKey, res);
+      return res;
+    } catch (e) {
+      return initialPublications;
+    }
   },
 
   async createPublication(data) {
     await ensureDb();
+    queryCache.invalidate('pubs');
+    if (mongoose.connection.readyState !== 1) {
+      const item = { id: 'pub-' + Date.now(), isPublished: true, ...data };
+      initialPublications.unshift(item);
+      return item;
+    }
     const pubData = { isPublished: true, ...data };
     const created = await PublicationModel.create(pubData);
-    queryCache.invalidate('pubs');
     return formatDoc(created);
   },
 
   async updatePublication(id, updates) {
     await ensureDb();
-    const updated = await PublicationModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     queryCache.invalidate('pubs');
+    if (mongoose.connection.readyState !== 1) {
+      const idx = initialPublications.findIndex(p => p.id === id || p._id === id);
+      if (idx !== -1) {
+        Object.assign(initialPublications[idx], updates);
+        return initialPublications[idx];
+      }
+      return null;
+    }
+    const updated = await PublicationModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     return formatDoc(updated);
   },
 
   async togglePublishPublication(id) {
     await ensureDb();
+    queryCache.invalidate('pubs');
+    if (mongoose.connection.readyState !== 1) {
+      const item = initialPublications.find(p => p.id === id || p._id === id);
+      if (item) {
+        item.isPublished = item.isPublished === false ? true : false;
+        return item;
+      }
+      return null;
+    }
     const doc = await PublicationModel.findOne(buildQuery(id));
     if (!doc) return null;
     doc.isPublished = doc.isPublished === false ? true : false;
     await doc.save();
-    queryCache.invalidate('pubs');
     return formatDoc(doc);
   },
 
   async deletePublication(id) {
     await ensureDb();
-    const res = await PublicationModel.deleteOne(buildQuery(id));
     queryCache.invalidate('pubs');
+    if (mongoose.connection.readyState !== 1) {
+      const idx = initialPublications.findIndex(p => p.id === id || p._id === id);
+      if (idx !== -1) {
+        initialPublications.splice(idx, 1);
+        return true;
+      }
+      return false;
+    }
+    const res = await PublicationModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;
   },
 
@@ -166,30 +225,59 @@ const store = {
     const cached = queryCache.get(cacheKey);
     if (cached) return cached;
     await ensureDb();
-    const filter = isAdmin ? {} : { isPublished: { $ne: false } };
-    const docs = await AwardModel.find(filter).sort({ year: -1, createdAt: -1 }).lean();
-    const res = formatDocs(docs);
-    queryCache.set(cacheKey, res);
-    return res;
+    if (mongoose.connection.readyState !== 1) {
+      return initialAwards;
+    }
+    try {
+      const filter = isAdmin ? {} : { isPublished: { $ne: false } };
+      const docs = await AwardModel.find(filter).sort({ year: -1, createdAt: -1 }).lean();
+      const res = (docs && docs.length > 0) ? formatDocs(docs) : initialAwards;
+      queryCache.set(cacheKey, res);
+      return res;
+    } catch (e) {
+      return initialAwards;
+    }
   },
 
   async createAward(data) {
     await ensureDb();
+    queryCache.invalidate('awards');
+    if (mongoose.connection.readyState !== 1) {
+      const item = { id: 'awd-' + Date.now(), isPublished: true, ...data };
+      initialAwards.unshift(item);
+      return item;
+    }
     const itemData = { isPublished: true, ...data };
     const created = await AwardModel.create(itemData);
-    queryCache.invalidate('awards');
     return formatDoc(created);
   },
 
   async updateAward(id, updates) {
     await ensureDb();
-    const updated = await AwardModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     queryCache.invalidate('awards');
+    if (mongoose.connection.readyState !== 1) {
+      const idx = initialAwards.findIndex(a => a.id === id || a._id === id);
+      if (idx !== -1) {
+        Object.assign(initialAwards[idx], updates);
+        return initialAwards[idx];
+      }
+      return null;
+    }
+    const updated = await AwardModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     return formatDoc(updated);
   },
 
   async togglePublishAward(id) {
     await ensureDb();
+    queryCache.invalidate('awards');
+    if (mongoose.connection.readyState !== 1) {
+      const item = initialAwards.find(a => a.id === id || a._id === id);
+      if (item) {
+        item.isPublished = item.isPublished === false ? true : false;
+        return item;
+      }
+      return null;
+    }
     const doc = await AwardModel.findOne(buildQuery(id));
     if (!doc) return null;
     doc.isPublished = doc.isPublished === false ? true : false;
@@ -199,8 +287,16 @@ const store = {
 
   async deleteAward(id) {
     await ensureDb();
-    const res = await AwardModel.deleteOne(buildQuery(id));
     queryCache.invalidate('awards');
+    if (mongoose.connection.readyState !== 1) {
+      const idx = initialAwards.findIndex(a => a.id === id || a._id === id);
+      if (idx !== -1) {
+        initialAwards.splice(idx, 1);
+        return true;
+      }
+      return false;
+    }
+    const res = await AwardModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;
   },
 
@@ -210,30 +306,59 @@ const store = {
     const cached = queryCache.get(cacheKey);
     if (cached) return cached;
     await ensureDb();
-    const filter = isAdmin ? {} : { isPublished: { $ne: false } };
-    const docs = await WorkshopModel.find(filter).sort({ createdAt: -1 }).lean();
-    const res = formatDocs(docs);
-    queryCache.set(cacheKey, res);
-    return res;
+    if (mongoose.connection.readyState !== 1) {
+      return initialWorkshops;
+    }
+    try {
+      const filter = isAdmin ? {} : { isPublished: { $ne: false } };
+      const docs = await WorkshopModel.find(filter).sort({ createdAt: -1 }).lean();
+      const res = (docs && docs.length > 0) ? formatDocs(docs) : initialWorkshops;
+      queryCache.set(cacheKey, res);
+      return res;
+    } catch (e) {
+      return initialWorkshops;
+    }
   },
 
   async createWorkshop(data) {
     await ensureDb();
+    queryCache.invalidate('workshops');
+    if (mongoose.connection.readyState !== 1) {
+      const item = { id: 'wkp-' + Date.now(), isPublished: true, ...data };
+      initialWorkshops.unshift(item);
+      return item;
+    }
     const itemData = { isPublished: true, ...data };
     const created = await WorkshopModel.create(itemData);
-    queryCache.invalidate('workshops');
     return formatDoc(created);
   },
 
   async updateWorkshop(id, updates) {
     await ensureDb();
-    const updated = await WorkshopModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     queryCache.invalidate('workshops');
+    if (mongoose.connection.readyState !== 1) {
+      const idx = initialWorkshops.findIndex(w => w.id === id || w._id === id);
+      if (idx !== -1) {
+        Object.assign(initialWorkshops[idx], updates);
+        return initialWorkshops[idx];
+      }
+      return null;
+    }
+    const updated = await WorkshopModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     return formatDoc(updated);
   },
 
   async togglePublishWorkshop(id) {
     await ensureDb();
+    queryCache.invalidate('workshops');
+    if (mongoose.connection.readyState !== 1) {
+      const item = initialWorkshops.find(w => w.id === id || w._id === id);
+      if (item) {
+        item.isPublished = item.isPublished === false ? true : false;
+        return item;
+      }
+      return null;
+    }
     const doc = await WorkshopModel.findOne(buildQuery(id));
     if (!doc) return null;
     doc.isPublished = doc.isPublished === false ? true : false;
@@ -243,8 +368,16 @@ const store = {
 
   async deleteWorkshop(id) {
     await ensureDb();
-    const res = await WorkshopModel.deleteOne(buildQuery(id));
     queryCache.invalidate('workshops');
+    if (mongoose.connection.readyState !== 1) {
+      const idx = initialWorkshops.findIndex(w => w.id === id || w._id === id);
+      if (idx !== -1) {
+        initialWorkshops.splice(idx, 1);
+        return true;
+      }
+      return false;
+    }
+    const res = await WorkshopModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;
   },
 
@@ -254,30 +387,59 @@ const store = {
     const cached = queryCache.get(cacheKey);
     if (cached) return cached;
     await ensureDb();
-    const filter = isAdmin ? {} : { isPublished: { $ne: false } };
-    const docs = await ProjectModel.find(filter).sort({ createdAt: -1 }).lean();
-    const res = formatDocs(docs);
-    queryCache.set(cacheKey, res);
-    return res;
+    if (mongoose.connection.readyState !== 1) {
+      return initialProjects;
+    }
+    try {
+      const filter = isAdmin ? {} : { isPublished: { $ne: false } };
+      const docs = await ProjectModel.find(filter).sort({ createdAt: -1 }).lean();
+      const res = (docs && docs.length > 0) ? formatDocs(docs) : initialProjects;
+      queryCache.set(cacheKey, res);
+      return res;
+    } catch (e) {
+      return initialProjects;
+    }
   },
 
   async createProject(data) {
     await ensureDb();
+    queryCache.invalidate('projects');
+    if (mongoose.connection.readyState !== 1) {
+      const item = { id: 'prj-' + Date.now(), isPublished: true, ...data };
+      initialProjects.unshift(item);
+      return item;
+    }
     const itemData = { isPublished: true, ...data };
     const created = await ProjectModel.create(itemData);
-    queryCache.invalidate('projects');
     return formatDoc(created);
   },
 
   async updateProject(id, updates) {
     await ensureDb();
-    const updated = await ProjectModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     queryCache.invalidate('projects');
+    if (mongoose.connection.readyState !== 1) {
+      const idx = initialProjects.findIndex(p => p.id === id || p._id === id);
+      if (idx !== -1) {
+        Object.assign(initialProjects[idx], updates);
+        return initialProjects[idx];
+      }
+      return null;
+    }
+    const updated = await ProjectModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     return formatDoc(updated);
   },
 
   async togglePublishProject(id) {
     await ensureDb();
+    queryCache.invalidate('projects');
+    if (mongoose.connection.readyState !== 1) {
+      const item = initialProjects.find(p => p.id === id || p._id === id);
+      if (item) {
+        item.isPublished = item.isPublished === false ? true : false;
+        return item;
+      }
+      return null;
+    }
     const doc = await ProjectModel.findOne(buildQuery(id));
     if (!doc) return null;
     doc.isPublished = doc.isPublished === false ? true : false;
@@ -287,8 +449,16 @@ const store = {
 
   async deleteProject(id) {
     await ensureDb();
-    const res = await ProjectModel.deleteOne(buildQuery(id));
     queryCache.invalidate('projects');
+    if (mongoose.connection.readyState !== 1) {
+      const idx = initialProjects.findIndex(p => p.id === id || p._id === id);
+      if (idx !== -1) {
+        initialProjects.splice(idx, 1);
+        return true;
+      }
+      return false;
+    }
+    const res = await ProjectModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;
   },
 
@@ -298,32 +468,61 @@ const store = {
     const cached = queryCache.get(cacheKey);
     if (cached) return cached;
     await ensureDb();
-    const filter = {};
-    if (!isAdmin) filter.isPublished = { $ne: false };
-    if (category && category !== 'All') filter.category = category;
-    const docs = await GalleryModel.find(filter).sort({ createdAt: -1 }).lean();
-    const res = formatDocs(docs);
-    queryCache.set(cacheKey, res);
-    return res;
+    if (mongoose.connection.readyState !== 1) {
+      return initialGallery;
+    }
+    try {
+      const filter = {};
+      if (!isAdmin) filter.isPublished = { $ne: false };
+      if (category && category !== 'All') filter.category = category;
+      const docs = await GalleryModel.find(filter).sort({ createdAt: -1 }).lean();
+      const res = (docs && docs.length > 0) ? formatDocs(docs) : initialGallery;
+      queryCache.set(cacheKey, res);
+      return res;
+    } catch (e) {
+      return initialGallery;
+    }
   },
 
   async createGalleryItem(data) {
     await ensureDb();
+    queryCache.invalidate('gallery');
+    if (mongoose.connection.readyState !== 1) {
+      const item = { id: 'gal-' + Date.now(), isPublished: true, ...data };
+      initialGallery.unshift(item);
+      return item;
+    }
     const itemData = { isPublished: true, ...data };
     const created = await GalleryModel.create(itemData);
-    queryCache.invalidate('gallery');
     return formatDoc(created);
   },
 
   async updateGalleryItem(id, updates) {
     await ensureDb();
-    const updated = await GalleryModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     queryCache.invalidate('gallery');
+    if (mongoose.connection.readyState !== 1) {
+      const idx = initialGallery.findIndex(g => g.id === id || g._id === id);
+      if (idx !== -1) {
+        Object.assign(initialGallery[idx], updates);
+        return initialGallery[idx];
+      }
+      return null;
+    }
+    const updated = await GalleryModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     return formatDoc(updated);
   },
 
   async togglePublishGallery(id) {
     await ensureDb();
+    queryCache.invalidate('gallery');
+    if (mongoose.connection.readyState !== 1) {
+      const item = initialGallery.find(g => g.id === id || g._id === id);
+      if (item) {
+        item.isPublished = item.isPublished === false ? true : false;
+        return item;
+      }
+      return null;
+    }
     const doc = await GalleryModel.findOne(buildQuery(id));
     if (!doc) return null;
     doc.isPublished = doc.isPublished === false ? true : false;
@@ -333,8 +532,16 @@ const store = {
 
   async deleteGalleryItem(id) {
     await ensureDb();
-    const res = await GalleryModel.deleteOne(buildQuery(id));
     queryCache.invalidate('gallery');
+    if (mongoose.connection.readyState !== 1) {
+      const idx = initialGallery.findIndex(g => g.id === id || g._id === id);
+      if (idx !== -1) {
+        initialGallery.splice(idx, 1);
+        return true;
+      }
+      return false;
+    }
+    const res = await GalleryModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;
   },
 
@@ -344,21 +551,41 @@ const store = {
     const cached = queryCache.get(cacheKey);
     if (cached) return cached;
     await ensureDb();
-    const filter = isAdmin ? {} : { isPublished: { $ne: false } };
-    const docs = await TestModel.find(filter).sort({ createdAt: -1 }).lean();
-    const res = formatDocs(docs);
-    queryCache.set(cacheKey, res);
-    return res;
+    if (mongoose.connection.readyState !== 1) {
+      return initialTests;
+    }
+    try {
+      const filter = isAdmin ? {} : { isPublished: { $ne: false } };
+      const docs = await TestModel.find(filter).sort({ createdAt: -1 }).lean();
+      const res = (docs && docs.length > 0) ? formatDocs(docs) : initialTests;
+      queryCache.set(cacheKey, res);
+      return res;
+    } catch (e) {
+      return initialTests;
+    }
   },
 
   async getTestById(id) {
     await ensureDb();
-    const doc = await TestModel.findOne(buildQuery(id));
-    return formatDoc(doc);
+    if (mongoose.connection.readyState !== 1) {
+      return initialTests.find(t => t.id === id || t._id === id) || initialTests[0];
+    }
+    try {
+      const doc = await TestModel.findOne(buildQuery(id)).lean();
+      return formatDoc(doc) || initialTests[0];
+    } catch (e) {
+      return initialTests[0];
+    }
   },
 
   async createTest(data) {
     await ensureDb();
+    queryCache.invalidate('tests');
+    if (mongoose.connection.readyState !== 1) {
+      const item = { id: 'tst-' + Date.now(), isPublished: true, submissionsCount: 0, ...data };
+      initialTests.unshift(item);
+      return item;
+    }
     const itemData = { isPublished: true, submissionsCount: 0, ...data };
     const created = await TestModel.create(itemData);
     return formatDoc(created);
@@ -366,12 +593,30 @@ const store = {
 
   async updateTest(id, updates) {
     await ensureDb();
-    const updated = await TestModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true });
+    queryCache.invalidate('tests');
+    if (mongoose.connection.readyState !== 1) {
+      const idx = initialTests.findIndex(t => t.id === id || t._id === id);
+      if (idx !== -1) {
+        Object.assign(initialTests[idx], updates);
+        return initialTests[idx];
+      }
+      return null;
+    }
+    const updated = await TestModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     return formatDoc(updated);
   },
 
   async togglePublishTest(id) {
     await ensureDb();
+    queryCache.invalidate('tests');
+    if (mongoose.connection.readyState !== 1) {
+      const item = initialTests.find(t => t.id === id || t._id === id);
+      if (item) {
+        item.isPublished = item.isPublished === false ? true : false;
+        return item;
+      }
+      return null;
+    }
     const doc = await TestModel.findOne(buildQuery(id));
     if (!doc) return null;
     doc.isPublished = doc.isPublished === false ? true : false;
@@ -381,13 +626,24 @@ const store = {
 
   async deleteTest(id) {
     await ensureDb();
+    queryCache.invalidate('tests');
+    if (mongoose.connection.readyState !== 1) {
+      const idx = initialTests.findIndex(t => t.id === id || t._id === id);
+      if (idx !== -1) {
+        initialTests.splice(idx, 1);
+        return true;
+      }
+      return false;
+    }
     const res = await TestModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;
   },
 
   async submitTest(testId, submissionData) {
     await ensureDb();
-    const test = await TestModel.findOne(buildQuery(testId));
+    const test = (mongoose.connection.readyState === 1)
+      ? await TestModel.findOne(buildQuery(testId))
+      : (initialTests.find(t => t.id === testId || t._id === testId) || initialTests[0]);
     if (!test) return null;
 
     let score = 0;
@@ -409,81 +665,130 @@ const store = {
     const totalMarks = test.questions.reduce((sum, q) => sum + (q.marks || 1), 0);
     const passed = score >= (test.passMarks || Math.ceil(totalMarks * 0.4));
 
-    const submissionDoc = await TestSubmissionModel.create({
-      testId: test._id,
-      testTitle: test.title,
-      studentName: submissionData.studentName || 'Anonymous Scholar',
-      studentEmail: submissionData.studentEmail || '',
-      studentRollNo: submissionData.studentRollNo || '',
-      score,
-      totalMarks,
-      passed,
-      answers: detailedResults
-    });
-
-    test.submissionsCount = (test.submissionsCount || 0) + 1;
-    await test.save();
+    if (mongoose.connection.readyState === 1) {
+      const submissionDoc = await TestSubmissionModel.create({
+        testId: test._id,
+        testTitle: test.title,
+        studentName: submissionData.studentName || 'Anonymous Scholar',
+        studentEmail: submissionData.studentEmail || '',
+        studentRollNo: submissionData.studentRollNo || '',
+        score,
+        totalMarks,
+        passed,
+        answers: detailedResults
+      });
+      test.submissionsCount = (test.submissionsCount || 0) + 1;
+      await test.save();
+      return {
+        submissionId: submissionDoc._id.toString(),
+        score,
+        totalMarks,
+        passed,
+        percentage: ((score / totalMarks) * 100).toFixed(1),
+        results: detailedResults
+      };
+    }
 
     return {
-      submissionId: submissionDoc._id.toString(),
-      testTitle: test.title,
-      studentName: submissionDoc.studentName,
+      submissionId: 'sub-' + Date.now(),
       score,
       totalMarks,
-      percentage: totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0',
       passed,
-      detailedResults
+      percentage: ((score / totalMarks) * 100).toFixed(1),
+      results: detailedResults
     };
   },
 
-  async getSubmissionsByTestId(testId) {
+  async getTestSubmissions(testId) {
     await ensureDb();
-    const docs = await TestSubmissionModel.find({ testId: buildQuery(testId)._id || testId }).sort({ createdAt: -1 });
-    return formatDocs(docs);
+    if (mongoose.connection.readyState !== 1) return [];
+    try {
+      const docs = await TestSubmissionModel.find({ testId }).sort({ createdAt: -1 }).lean();
+      return formatDocs(docs);
+    } catch(e) {
+      return [];
+    }
   },
 
-  async getAllSubmissions() {
+  async getAllTestSubmissions() {
     await ensureDb();
-    const docs = await TestSubmissionModel.find().sort({ createdAt: -1 });
-    return formatDocs(docs);
+    if (mongoose.connection.readyState !== 1) return [];
+    try {
+      const docs = await TestSubmissionModel.find().sort({ createdAt: -1 }).lean();
+      return formatDocs(docs);
+    } catch(e) {
+      return [];
+    }
   },
 
-  async deleteSubmission(subId) {
+  async deleteTestSubmission(subId) {
     await ensureDb();
+    if (mongoose.connection.readyState !== 1) return true;
     const res = await TestSubmissionModel.deleteOne(buildQuery(subId));
     return res.deletedCount > 0;
   },
 
-  // ==================== Articles & Study Notes ====================
+  // ==================== Study Articles / Notes ====================
   async getArticles(category, isAdmin = false) {
     const cacheKey = 'articles_' + isAdmin + '_' + (category || 'all');
     const cached = queryCache.get(cacheKey);
     if (cached) return cached;
     await ensureDb();
-    const filter = {};
-    if (!isAdmin) filter.isPublished = { $ne: false };
-    if (category && category !== 'All') filter.category = category;
-    const docs = await ArticleModel.find(filter).sort({ createdAt: -1 }).lean();
-    const res = formatDocs(docs);
-    queryCache.set(cacheKey, res);
-    return res;
+    if (mongoose.connection.readyState !== 1) {
+      return initialArticles;
+    }
+    try {
+      const filter = {};
+      if (!isAdmin) filter.isPublished = { $ne: false };
+      if (category && category !== 'All') filter.category = category;
+      const docs = await ArticleModel.find(filter).sort({ createdAt: -1 }).lean();
+      const res = (docs && docs.length > 0) ? formatDocs(docs) : initialArticles;
+      queryCache.set(cacheKey, res);
+      return res;
+    } catch (e) {
+      return initialArticles;
+    }
   },
 
   async createArticle(data) {
     await ensureDb();
-    const itemData = { isPublished: true, ...data };
+    queryCache.invalidate('articles');
+    if (mongoose.connection.readyState !== 1) {
+      const item = { id: 'art-' + Date.now(), isPublished: true, viewsCount: 0, ...data };
+      initialArticles.unshift(item);
+      return item;
+    }
+    const itemData = { isPublished: true, viewsCount: 0, ...data };
     const created = await ArticleModel.create(itemData);
     return formatDoc(created);
   },
 
   async updateArticle(id, updates) {
     await ensureDb();
-    const updated = await ArticleModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true });
+    queryCache.invalidate('articles');
+    if (mongoose.connection.readyState !== 1) {
+      const idx = initialArticles.findIndex(a => a.id === id || a._id === id);
+      if (idx !== -1) {
+        Object.assign(initialArticles[idx], updates);
+        return initialArticles[idx];
+      }
+      return null;
+    }
+    const updated = await ArticleModel.findOneAndUpdate(buildQuery(id), { $set: updates }, { new: true }).lean();
     return formatDoc(updated);
   },
 
   async togglePublishArticle(id) {
     await ensureDb();
+    queryCache.invalidate('articles');
+    if (mongoose.connection.readyState !== 1) {
+      const item = initialArticles.find(a => a.id === id || a._id === id);
+      if (item) {
+        item.isPublished = item.isPublished === false ? true : false;
+        return item;
+      }
+      return null;
+    }
     const doc = await ArticleModel.findOne(buildQuery(id));
     if (!doc) return null;
     doc.isPublished = doc.isPublished === false ? true : false;
@@ -493,31 +798,68 @@ const store = {
 
   async deleteArticle(id) {
     await ensureDb();
+    queryCache.invalidate('articles');
+    if (mongoose.connection.readyState !== 1) {
+      const idx = initialArticles.findIndex(a => a.id === id || a._id === id);
+      if (idx !== -1) {
+        initialArticles.splice(idx, 1);
+        return true;
+      }
+      return false;
+    }
     const res = await ArticleModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;
   },
 
-  // ==================== Messages & Inquiries ====================
+  // ==================== Messages & Contact Inquiries ====================
   async getMessages() {
     await ensureDb();
-    const docs = await MessageModel.find().sort({ createdAt: -1 });
-    return formatDocs(docs);
+    if (mongoose.connection.readyState !== 1) return initialMessages || [];
+    try {
+      const docs = await MessageModel.find().sort({ createdAt: -1 }).lean();
+      return formatDocs(docs);
+    } catch(e) {
+      return initialMessages || [];
+    }
   },
 
   async createMessage(data) {
     await ensureDb();
-    const created = await MessageModel.create({ isRead: false, ...data });
+    queryCache.invalidate('stats');
+    if (mongoose.connection.readyState !== 1) {
+      const item = { id: 'msg-' + Date.now(), isRead: false, createdAt: new Date().toISOString(), ...data };
+      if (!initialMessages) initialMessages = [];
+      initialMessages.unshift(item);
+      return item;
+    }
+    const itemData = { isRead: false, ...data };
+    const created = await MessageModel.create(itemData);
     return formatDoc(created);
   },
 
   async markMessageRead(id, isRead = true) {
     await ensureDb();
-    const updated = await MessageModel.findOneAndUpdate(buildQuery(id), { $set: { isRead } }, { new: true });
+    queryCache.invalidate('stats');
+    if (mongoose.connection.readyState !== 1) {
+      const item = (initialMessages || []).find(m => m.id === id || m._id === id);
+      if (item) item.isRead = isRead;
+      return item;
+    }
+    const updated = await MessageModel.findOneAndUpdate(buildQuery(id), { $set: { isRead } }, { new: true }).lean();
     return formatDoc(updated);
   },
 
   async deleteMessage(id) {
     await ensureDb();
+    queryCache.invalidate('stats');
+    if (mongoose.connection.readyState !== 1) {
+      const idx = (initialMessages || []).findIndex(m => m.id === id || m._id === id);
+      if (idx !== -1) {
+        initialMessages.splice(idx, 1);
+        return true;
+      }
+      return false;
+    }
     const res = await MessageModel.deleteOne(buildQuery(id));
     return res.deletedCount > 0;
   },
@@ -527,42 +869,77 @@ const store = {
     const cached = queryCache.get('stats');
     if (cached) return cached;
     await ensureDb();
-    const [
-      publicationsCount,
-      awardsCount,
-      workshopsCount,
-      projectsCount,
-      galleryCount,
-      testsCount,
-      articlesCount,
-      totalMessages,
-      unreadMessages
-    ] = await Promise.all([
-      PublicationModel.countDocuments(),
-      AwardModel.countDocuments(),
-      WorkshopModel.countDocuments(),
-      ProjectModel.countDocuments(),
-      GalleryModel.countDocuments(),
-      TestModel.countDocuments(),
-      ArticleModel.countDocuments(),
-      MessageModel.countDocuments(),
-      MessageModel.countDocuments({ isRead: false })
-    ]);
 
-    const res = {
-      publicationsCount,
-      awardsCount,
-      workshopsCount,
-      projectsCount,
-      galleryCount,
-      testsCount,
-      articlesCount,
-      totalMessages,
-      unreadMessages,
-      databaseStatus: isDbConnected() ? 'MongoDB Atlas (Connected)' : 'Disconnected'
-    };
-    queryCache.set('stats', res);
-    return res;
+    if (mongoose.connection.readyState !== 1) {
+      const res = {
+        publicationsCount: initialPublications.length,
+        awardsCount: initialAwards.length,
+        workshopsCount: initialWorkshops.length,
+        projectsCount: initialProjects.length,
+        galleryCount: initialGallery.length,
+        testsCount: initialTests.length,
+        articlesCount: initialArticles.length,
+        totalMessages: (initialMessages || []).length,
+        unreadMessages: (initialMessages || []).filter(m => !m.isRead).length,
+        databaseStatus: 'Local In-Memory Cache (Active)'
+      };
+      queryCache.set('stats', res);
+      return res;
+    }
+
+    try {
+      const [
+        publicationsCount,
+        awardsCount,
+        workshopsCount,
+        projectsCount,
+        galleryCount,
+        testsCount,
+        articlesCount,
+        totalMessages,
+        unreadMessages
+      ] = await Promise.all([
+        PublicationModel.countDocuments().exec(),
+        AwardModel.countDocuments().exec(),
+        WorkshopModel.countDocuments().exec(),
+        ProjectModel.countDocuments().exec(),
+        GalleryModel.countDocuments().exec(),
+        TestModel.countDocuments().exec(),
+        ArticleModel.countDocuments().exec(),
+        MessageModel.countDocuments().exec(),
+        MessageModel.countDocuments({ isRead: false }).exec()
+      ]);
+
+      const res = {
+        publicationsCount,
+        awardsCount,
+        workshopsCount,
+        projectsCount,
+        galleryCount,
+        testsCount,
+        articlesCount,
+        totalMessages,
+        unreadMessages,
+        databaseStatus: isDbConnected() ? 'MongoDB Atlas (Connected)' : 'Disconnected'
+      };
+      queryCache.set('stats', res);
+      return res;
+    } catch (err) {
+      const res = {
+        publicationsCount: initialPublications.length,
+        awardsCount: initialAwards.length,
+        workshopsCount: initialWorkshops.length,
+        projectsCount: initialProjects.length,
+        galleryCount: initialGallery.length,
+        testsCount: initialTests.length,
+        articlesCount: initialArticles.length,
+        totalMessages: (initialMessages || []).length,
+        unreadMessages: (initialMessages || []).filter(m => !m.isRead).length,
+        databaseStatus: 'Resilient Cache (Active)'
+      };
+      queryCache.set('stats', res);
+      return res;
+    }
   }
 };
 
